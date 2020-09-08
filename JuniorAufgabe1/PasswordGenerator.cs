@@ -3,7 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 
-namespace PasswordGenerator
+namespace JuniorAufgabe1
 {
   public static class PasswordGenerator
   {
@@ -14,7 +14,7 @@ namespace PasswordGenerator
     // Konsonantencluster
     // Clusters wie "bb", "dd", "ll" usw. sind ausgeschlossen, da sie zur Verwirrung fuehren koennten
     // Clusters, die am Anfang stehen koennen:
-    private static readonly string[] _startClusters = new string[] { "bl", "br", "ch", "dr", "dw", "fl", "fr", "gn", "gr", "kn", "kr", "pf", "pfl", "pfr", "pl", "pn", "pr", "ph", "phl", "phr", "sk", "skl", "skr", "sl", "sp", "sph", "spl", "spr", "st", "str", "sz", "sch", "schl", "schm", "schn", "schr", "schw", "tr", "zw", "ch", "gl", "kl", "sp", "sph", "sch", "scht", "schr", "tsch" };
+    private static readonly string[] _startClusters = new string[] { "bl", "br", "ch", "dr", "fl", "fr", "gn", "gr", "kn", "kr", "pf", "pfl", "pfr", "pl", "pn", "pr", "ph", "phl", "phr", "sk", "skl", "skr", "sl", "sp", "sph", "spl", "spr", "st", "str", "sz", "sch", "schl", "schm", "schn", "schr", "schw", "tr", "zw", "ch", "gl", "kl", "sp", "sph", "sch", "scht", "schr", "tsch" };
 
     // Clusters, die am Ende eines Wortes stehen koennen
     private static readonly string[] _endClusters = new string[] { "ch", "pf", "ph", "sk", "skl", "sl", "sp", "sph", "st", "sch", "bst", "bt", "ch", "chs", "cht", "dm", "dt", "ft", "gd", "gs", "gt", "kt", "ks", "lb", "lch", "ld", "lf", "lg", "lk", "lm", "ln", "lp", "ls", "lsch", "lt", "lz", "mb", "md", "mp", "mpf", "mph", "ms", "msch", "mt", "nd", "nf", "nft", "ng", "ngs", "ngst", "nk", "nkt", "ns", "nsch", "nst", "nt", "nx", "nz", "ps", "psch", "pst", "pt", "sk", "sp", "sph", "st", "sch", "ts", "tsch", "tz", "tzt", "xt" };
@@ -58,41 +58,35 @@ namespace PasswordGenerator
       // Check given argument
       if (length < 1) throw new ArgumentException("Password must contain at least one character!", nameof(length));
 
-      int maximalNumberInPassword = (int)(length / 8 + 0.5);
-      int numberInPasswordCount = 0;
-      byte[] createNumberLimit = new byte[1];
-      rngCsp.GetBytes(createNumberLimit);
-
       List<string> password = new List<string>();
 
       byte[] randomNumber = new byte[1];
+
+      int maximalNumberInPassword = (int)(length / 16 + 0.5);
+      int numberInPasswordCount = 0;
+      byte[] canCreateNumber = new byte[1];
+
 
       while (password.GetStringLength() < length)
       {
         // Generiert eine aus der kryptographischen Sicht gesehen sichere Zufallsnummer
         // Also eine Zufallsnummer, die hier als reale Zufallsnummer gesehen werden kann
         rngCsp.GetBytes(randomNumber);
+        rngCsp.GetBytes(canCreateNumber);
 
         // Test ob hier eine Nummer sein koennte
-        if ((createNumberLimit[0] % 2 == 1) && maximalNumberInPassword > numberInPasswordCount)
+        if ((canCreateNumber[0] % 7 == 1) && maximalNumberInPassword > numberInPasswordCount && password.IsNumberFollowable())
         {
-          if (password.GetStringLength() == 0 || !_konsonanten.Contains(password.ListToString().Substring(password.GetStringLength() - 1)))
-          {
-            if ((password.ListToString() + randomNumber[0].ToString()).Length <= length)
-            {
-              password.Add((randomNumber[0] % 100).ToString());
-              rngCsp.GetBytes(createNumberLimit);
-              numberInPasswordCount++;
-            }
-          }
+          // Regel 1: Nummer duerfen maximal 99 sein und 0 darf nicht vor irgendeiner beliebigen Nummer stehen
+          password.Add((randomNumber[0] % 100).ToString());
+          rngCsp.GetBytes(canCreateNumber);
+          numberInPasswordCount++;
         }
 
         // Zufallsnummer mod Laenge der Moeglichkeit, so beschraenkt man den Bereich der generierten Zufallsnummer
-        string stringToAdd = password.ListToString().getFollowableChars()[randomNumber[0] % password.ListToString().getFollowableChars().Length];
-        if (password.GetStringLength() + stringToAdd.Length > length)
-        {
-          continue;
-        }
+        string stringToAdd = password.GetFollowableChars()[randomNumber[0] % password.GetFollowableChars().Length];
+        // Falls es dann zu lange waere, fang direkt die naechste Schleife an
+        if (password.GetStringLength() + stringToAdd.Length > length) continue;
         else if (password.GetStringLength() + stringToAdd.Length == length)
         {
           if (_clusters.Except(_endClusters).Contains(stringToAdd)) continue;
@@ -134,23 +128,15 @@ namespace PasswordGenerator
 
 
     /// Extension Methode, die ein Feld zurueckgibt, in dem alle moegliche Konbination von Buchstaben steht
-    /// @param string s: Das vorher bereits generierte Teil-Passwort
+    /// @param string s: Das vorher bereits generierte Teil-Passwort in Form von List<string>
     /// @return string[]: Ein Feld, das alle moegliche Konbinationen von Buchstaben beinhaltet
-    private static string[] getFollowableChars(this string s)
+    private static string[] GetFollowableChars(this List<string> sL)
     {
-      if (s.Length == 0)
-      {
-        return (_vocale.Union(_konsonanten).Union(_startClusters)).ToArray();
-      }
-      else if (s.Length >= 2)
-      {
-        if (_vocale.Contains(s.Substring(s.Length - 2)) || (_vocale.Contains(s.Substring(s.Length - 1)) && _vocale.Contains(s.Substring(s.Length - 2)[0].ToString()))) return _konsonanten.Union(_clusters).ToArray();
-      }
-
-      char lastCharacter = s.Substring(s.Length - 1).ToCharArray()[0];
-      if (Char.IsNumber(lastCharacter)) return (_vocale.Union(_konsonanten).Union(_startClusters)).ToArray();
-      if (_konsonanten.Contains(lastCharacter.ToString())) return _vocale;
-      switch (lastCharacter)
+      if (sL.Count == 0) return _startClusters.Union(_konsonanten).ToArray();
+      if (Char.IsNumber(sL.Last().ToCharArray()[0])) return _vocale.Union(_startClusters).Union(_konsonanten).ToArray();
+      if (_konsonanten.Union(_clusters).Contains(sL.Last())) return _vocale;
+      if (sL.Last().Length > 1 && _vocale.Contains(sL.Last())) return _konsonanten.Union(_clusters).ToArray();
+      switch (sL.Last().ToCharArray()[sL.Last().Length - 1])
       {
         case 'a':
           return ((new string[] { "u", "i" }).Union(_konsonanten).Union(_clusters)).ToArray();
@@ -165,13 +151,22 @@ namespace PasswordGenerator
         case 'y':
           return _konsonanten.Union(_clusters).ToArray();
         default:
-          System.Diagnostics.Debug.WriteLine(s);
-          throw new ArgumentException("The given character is not implemented!", nameof(s));
+          System.Diagnostics.Debug.WriteLine(sL.ListToString());
+          throw new ArgumentException("The given character is not implemented!", nameof(sL));
       }
     }
 
-    private static string[] GetFollowableChars(this List<string> sL) {
-
+    /// Extension Methode, die zeight, ob jetzt eine Nummer kommen darf
+    /// @param List<string> sL
+    /// @return bool
+    private static bool IsNumberFollowable(this List<string> sL)
+    {
+      if (sL.Count == 0) return true;
+      if (sL.Count < 2) return false;
+      bool isVK = _konsonanten.Union(_clusters).Contains(sL.Last()) && _vocale.Contains(sL[^2]);
+      bool isKV = _vocale.Contains(sL.Last()) && _konsonanten.Union(_clusters).Contains(sL[^2]);
+      bool isEndWithIllegalChar = _unendableChars.Contains(sL.Last()[^1].ToString());
+      return sL.Count > 1 && (isVK || isKV) && !isEndWithIllegalChar;
     }
   }
 }
