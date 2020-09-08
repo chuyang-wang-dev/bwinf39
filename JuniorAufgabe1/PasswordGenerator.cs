@@ -169,5 +169,9 @@ namespace PasswordGenerator
           throw new ArgumentException("The given character is not implemented!", nameof(s));
       }
     }
+
+    private static string[] GetFollowableChars(this List<string> sL) {
+
+    }
   }
 }
