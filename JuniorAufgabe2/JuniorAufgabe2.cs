@@ -1,4 +1,9 @@
-﻿using System;
+﻿/// Author: Chuyang Wang, 2020
+/// C# 8.0, .Net Core 3.1
+/// To compile code, download .Net Core SDK 3.1 from https://dotnet.microsoft.com/download
+
+
+using System;
 using System.IO;
 
 namespace JuniorAufgabe2

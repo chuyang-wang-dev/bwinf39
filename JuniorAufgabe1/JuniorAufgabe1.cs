@@ -1,3 +1,8 @@
+/// Author: Chuyang Wang, 2020
+/// C# 8.0, .Net Core 3.1
+/// To compile code, download .Net Core SDK 3.1 from https://dotnet.microsoft.com/download
+
+
 using System;
 using System.Linq;
 using System.Collections.Generic;
@@ -62,8 +67,11 @@ namespace JuniorAufgabe1
 
       byte[] randomNumber = new byte[1];
 
+      // Rechnen, wie viele Nummer in diesem Passwort sein darf
       int maximalNumberInPassword = (int)(length / 16 + 0.5);
+      // Speichert, wie viele Nummer schon in dem Passwort zugefuegt sind
       int numberInPasswordCount = 0;
+      // Zufallsnummer, die entscheidet, ob eine Nummer zugefuegt werden soll, sofern die anderen Bedingungen erfuellt sind
       byte[] canCreateNumber = new byte[1];
 
 
@@ -79,12 +87,12 @@ namespace JuniorAufgabe1
         {
           // Regel 1: Nummer duerfen maximal 99 sein und 0 darf nicht vor irgendeiner beliebigen Nummer stehen
           password.Add((randomNumber[0] % 100).ToString());
-          rngCsp.GetBytes(canCreateNumber);
           numberInPasswordCount++;
         }
 
         // Zufallsnummer mod Laenge der Moeglichkeit, so beschraenkt man den Bereich der generierten Zufallsnummer
         string stringToAdd = password.GetFollowableChars()[randomNumber[0] % password.GetFollowableChars().Length];
+
         // Falls es dann zu lange waere, fang direkt die naechste Schleife an
         if (password.GetStringLength() + stringToAdd.Length > length) continue;
         else if (password.GetStringLength() + stringToAdd.Length == length)
@@ -92,9 +100,12 @@ namespace JuniorAufgabe1
           if (_clusters.Except(_endClusters).Contains(stringToAdd)) continue;
           if (_unendableChars.Contains((password + stringToAdd).Substring(length - 1, 1))) continue;
         }
+
+        // Fuegt das neue Teil des Passworts hinzu
         password.Add(stringToAdd);
       }
 
+      // Am Ende gibt man das generierte Passwort zurueck
       return password.ListToString().Substring(0, length);
     }
 

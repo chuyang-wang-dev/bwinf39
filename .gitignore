@@ -3,6 +3,7 @@
 #Ignore the test cases
 Test/
 bwinf39-runde1/
+*.txt
 
 #Ignore the build files
 Debug/
