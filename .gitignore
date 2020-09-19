@@ -4,6 +4,7 @@
 Test/
 bwinf39-runde1/
 *.txt
+BeispielLoesungen/
 
 #Ignore the build files
 Debug/
