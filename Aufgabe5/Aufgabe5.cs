@@ -1,3 +1,8 @@
+/// Author: Chuyang Wang, 2020
+/// C# 8.0, .Net Core 3.1
+/// To compile code, download .Net Core SDK 3.1 from https://dotnet.microsoft.com/download
+
+
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -34,6 +39,9 @@ namespace Aufgabe5
             int[] wishesWithIndexI = new int[3];
             for (int j = 0, wishI = 0; j < line.Length; j++)
             {
+              // Die Eingabedateien sind offenbar nicht nur mit einem Leerzeichen getrennt
+              // bspw. kommt 3  1 10 vor
+              // Deshalb wird geprueft, nur wenn es wirklich eine Zahl enthaelt, wird dies dann gespeichert
               if (!string.IsNullOrWhiteSpace(line[j])) wishesWithIndexI[wishI++] = Convert.ToInt32(line[j].Trim()) - 1;
             }
             students.Add(new Person(i, wishesWithIndexI));
@@ -72,7 +80,12 @@ namespace Aufgabe5
 
           for (int i = 0; i < studentCount; i++)
           {
-            Console.WriteLine($"Schueler {i + 1} bekommt {personWithGift[i] + 1}");
+            // Ausgabe: S G
+            // S ist die Nummer des/r SchuelerIn,
+            // G ist die Nummer der Gegenstand, der an dem/der SchuelerIn S gegeben wird
+            // Bsp: 1 3
+            // Das heisst, der/die Schueler 1 bekommt den Gegenstand 3
+            Console.WriteLine($"{i + 1} {personWithGift[i] + 1}");
           }
         }
       }

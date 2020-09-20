@@ -1,4 +1,9 @@
-﻿using System;
+/// Author: Chuyang Wang, 2020
+/// C# 8.0, .Net Core 3.1
+/// To compile code, download .Net Core SDK 3.1 from https://dotnet.microsoft.com/download
+
+
+using System;
 using System.IO;
 
 namespace Aufgabe3
@@ -32,21 +37,19 @@ namespace Aufgabe3
           });
           koX1.PlayGameNth(1000000);
           procent = koX1.GetWinningProcentOfBestPlayer(out bestPlayerNum);
-          Console.WriteLine($"{bestPlayerNum}: {procent}");
+          Console.WriteLine($"{bestPlayerNum} {procent}");
 
           KOx5 koX5 = new KOx5(playerStrength, rng, new int[] {
             0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
           });
           koX5.PlayGameNth(1000000);
           procent = koX5.GetWinningProcentOfBestPlayer(out bestPlayerNum);
-          Console.WriteLine($"{bestPlayerNum}: {procent}");
+          Console.WriteLine($"{bestPlayerNum} {procent}");
 
           Liga liga = new Liga(playerStrength, rng);
           liga.PlayGameNth(1000000);
           procent = liga.GetWinningProcentOfBestPlayer(out bestPlayerNum);
-          Console.WriteLine($"{bestPlayerNum}: {procent}");
-
-
+          Console.WriteLine($"{bestPlayerNum} {procent}");
         }
       }
       else
@@ -162,6 +165,7 @@ namespace Aufgabe3
           currentNode.Parent.Data = GetWinner(currentNode.Parent.LeftChild, currentNode.Parent.RightChild);
         }
       }
+
       private int GetWinner(Node<int> player1, Node<int> player2)
       {
         if (_rngProvider.GetIntBetween(1, _playerStrengths[player1.Data] + _playerStrengths[player2.Data]) <= _playerStrengths[player1.Data])
@@ -237,7 +241,6 @@ namespace Aufgabe3
       protected RNGProvider _rngProvider;
       public abstract void PlayGameOnce();
       public abstract void PlayGameNth(int n);
-      // overload
       public double GetWinningProcentOfBestPlayer(out int bestPlayerNumber)
       {
         bestPlayerNumber = 0;

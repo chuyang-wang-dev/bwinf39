@@ -29,6 +29,7 @@ namespace JuniorAufgabe2
           char[,] map = new char[h, b];
           bool[,] besucht = new bool[h, b];
 
+          // Einlesen der Daten
           for (int i = 0; i < h; i++)
           {
             char[] lineChars = sr.ReadLine().ToCharArray();
@@ -43,17 +44,17 @@ namespace JuniorAufgabe2
           {
             for (int j = 0; j < b; j++)
             {
+              // Falls es schon ganz am Rand steht und ist unmoeglich, eine Baulwuerfenbau zu bilden
+              if (i + 3 >= h || j + 2 >= b)
+              {
+                besucht[i, j] = true;
+                continue;
+              }
+
               // Falls diese Quadrat ist noch nicht besucht und auf diesem Quadrat
               // gibt es ein X bzw. Huegel
               if (!besucht[i, j] && map[i, j].IstHuegel())
               {
-                // Falls es schon ganz am Rand steht und ist unmoeglich, eine Baulwuerfenbau zu bilden
-                if (i + 3 >= h || j + 2 >= b)
-                {
-                  besucht[i, j] = true;
-                  continue;
-                }
-
                 // Testen, ob es sich von solchen speziellen Baulwuerfen handelt
                 bool istSpezial = map[i, j + 1].IstHuegel() && map[i, j + 2].IstHuegel() && map[i + 1, j].IstHuegel() && map[i + 1, j + 2].IstHuegel() && map[i + 2, j].IstHuegel() && map[i + 2, j + 2].IstHuegel() && map[i + 3, j].IstHuegel() && map[i + 3, j + 1].IstHuegel() && map[i + 3, j + 2].IstHuegel();
                 if (istSpezial)
@@ -79,13 +80,13 @@ namespace JuniorAufgabe2
           }
         }
         Console.WriteLine($"Es gibt insgesamt {spezialBaulwuerfenCount} Baulwurfsbaue.");
-        Console.ReadKey();
       }
       else
       {
         Console.WriteLine("Die gegebene Datei-Namen ist nicht gueltig. Das Programm und die Datei muessen in demselben Ordner stehen. ");
-        Console.ReadKey();
       }
+      Console.WriteLine("Drueck eine beliebige Taste zu schliessen...");
+      Console.ReadKey();
     }
 
     private static bool IstHuegel(this char mapKoordinate)
