@@ -47,7 +47,7 @@ namespace JuniorAufgabe2
               // Falls es schon ganz am Rand steht und ist unmoeglich, eine Baulwuerfenbau zu bilden
               if (i + 3 >= h || j + 2 >= b)
               {
-                besucht[i, j] = true;
+                // Dann ueberspringt man das Planquadrat direkt, ohne zu pruefen
                 continue;
               }
 
@@ -57,8 +57,16 @@ namespace JuniorAufgabe2
               {
                 // Testen, ob es sich von solchen speziellen Baulwuerfen handelt
                 bool istSpezial = map[i, j + 1].IstHuegel() && map[i, j + 2].IstHuegel() && map[i + 1, j].IstHuegel() && map[i + 1, j + 2].IstHuegel() && map[i + 2, j].IstHuegel() && map[i + 2, j + 2].IstHuegel() && map[i + 3, j].IstHuegel() && map[i + 3, j + 1].IstHuegel() && map[i + 3, j + 2].IstHuegel();
-                if (istSpezial)
+                // Testet, ob die beiden Planquadraten im Zentrum leer sind
+                // sodass es genau den Muster eines Baulwurfsbaues bildet
+                bool centerIstLeer = !(map[i+1, j+1].IstHuegel() || map[i+2, j+1].IstHuegel());
+                // Testet, ob die Huegel des Baues schon Teil eines anderen Baues ist  
+                bool sindBesucht = besucht[i, j + 1] || besucht[i, j + 2] || besucht[i + 1, j] || besucht[i + 1, j + 2] || besucht[i + 2, j] || besucht[i + 2, j + 2] || besucht[i + 3, j] || besucht[i + 3, j + 1] || besucht[i + 3, j + 2];
+                // Falls es der Fall ist
+                if (istSpezial && !sindBesucht && centerIstLeer)
                 {
+                  // Erhoeht man den Counter und markiert
+                  // alle Huegel des Baues als besucht
                   spezialBaulwuerfenCount++;
                   besucht[i, j] = true;
                   besucht[i, j + 1] = true;
@@ -71,8 +79,10 @@ namespace JuniorAufgabe2
                   besucht[i + 3, j + 1] = true;
                   besucht[i + 3, j + 2] = true;
                 }
+                // Falls es aber nicht der Fall ist
                 else
                 {
+                  // markiert man nur das jetzigen Quadrat als besucht
                   besucht[i, j] = true;
                 }
               }
