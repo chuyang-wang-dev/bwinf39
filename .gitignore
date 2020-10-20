@@ -1,4 +1,6 @@
 .vscode/
+*/.vs/*
+.vs/
 *.pdf
 
 #Ignore the test cases

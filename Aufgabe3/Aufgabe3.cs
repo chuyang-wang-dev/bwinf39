@@ -5,14 +5,37 @@
 
 using System;
 using System.IO;
+using System.Linq;
 
 namespace Aufgabe3
 {
-  public class Turnier
+  public static class Turnier
   {
+    private const int REPEAT = 1000000;
+    private static System.Random rng = new System.Random();
+
+    // Zufallszahlengenerator
+    // i1 and i2 are inclusive
+    private static int GetIntBetween(int i1, int i2)
+    {
+      if (i1 < 0 || i1 > i2) throw new ArgumentException(nameof(i1));
+      return rng.Next(i1, i2 + 1);
+    }
+
+    // Erweiterungsmethode, die testet, 
+    // ob der gegebenen Spielplan gueltig ist
+    private static bool IsValid(this int[] spielPlan)
+    {
+      if (spielPlan.Distinct().Count() < spielPlan.Length) return false;
+      for (int i = 0; i < spielPlan.Length; i++)
+      {
+        if (spielPlan[i] < 0 || spielPlan[i] >= spielPlan.Length) return false;
+      }
+      return true;
+    }
+
     public static void Main(string[] args)
     {
-      RNGProvider rng = new RNGProvider();
       Console.WriteLine("Bitte Name der Test-Datei eingeben...");
       string testFilePath = Console.ReadLine();
 
@@ -20,6 +43,7 @@ namespace Aufgabe3
       {
         using (StreamReader sr = File.OpenText(testFilePath))
         {
+          // Einlesen von Daten
           int playerCount = Convert.ToInt32(sr.ReadLine());
 
           // int[i] = Spielstaerke der SpielerIn i+1
@@ -29,45 +53,69 @@ namespace Aufgabe3
             playerStrength[i] = Convert.ToInt32(sr.ReadLine());
           }
 
+          // Einlesen von Spielplan
+          int[] spielPlan = new int[playerCount];
+          while (!spielPlan.IsValid())
+          {
+            Console.WriteLine("Geben Sie einen Spielplan ein...");
+            Console.Write("Es kann wie Folgendes aussehen: ");
+            Console.Write(playerCount == 8 ? "1,2,3,4,5,6,7,8\r\n" : "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16\r\n");
+            string[] temp = Console.ReadLine().Split(',');
+            for (int i = 0; i < temp.Length; i++)
+            {
+              if (!Int32.TryParse(temp[i], out spielPlan[i]))
+              {
+                Console.WriteLine("ggb. Spielplan ungueltig. Bitte erneurt eingeben.");
+                break;
+              }
+              else
+              {
+                // Index ist 1 kleiner als die richtige Spielnummer
+                // denn der faengt mit 0 an
+                spielPlan[i]--;
+              }
+            }
+          }
+
+          // Das Turnier in den 3 Spielformen durchfuehren
           int bestPlayerNum;
           double procent;
 
-          KOx1 koX1 = new KOx1(playerStrength, rng, new int[] {
-            0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
-          });
-          koX1.PlayGameNth(1000000);
+          KOx1 koX1 = new KOx1(playerStrength, spielPlan);
+          koX1.PlayGameNth(REPEAT);
           procent = koX1.GetWinningProcentOfBestPlayer(out bestPlayerNum);
-          Console.WriteLine($"{bestPlayerNum} {procent}");
+          // Index ist 1 kleiner als die richtige Spielnummer
+          // also bestPlayerNum + 1 , 
+          // sodass anstatt des Indexes die Spielernummer gezeigt werden kann
+          Console.WriteLine($"KOx1: {bestPlayerNum + 1} - {procent}");
 
-          KOx5 koX5 = new KOx5(playerStrength, rng, new int[] {
-            0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
-          });
-          koX5.PlayGameNth(1000000);
+          KOx5 koX5 = new KOx5(playerStrength, spielPlan);
+          koX5.PlayGameNth(REPEAT);
           procent = koX5.GetWinningProcentOfBestPlayer(out bestPlayerNum);
-          Console.WriteLine($"{bestPlayerNum} {procent}");
+          Console.WriteLine($"KOx5: {bestPlayerNum + 1} - {procent}");
 
-          Liga liga = new Liga(playerStrength, rng);
-          liga.PlayGameNth(1000000);
+          Liga liga = new Liga(playerStrength);
+          liga.PlayGameNth(REPEAT);
           procent = liga.GetWinningProcentOfBestPlayer(out bestPlayerNum);
-          Console.WriteLine($"{bestPlayerNum} {procent}");
+          Console.WriteLine($"Liga: {bestPlayerNum + 1} - {procent}");
         }
       }
       else
       {
         Console.WriteLine("Die gegebene Datei-Namen ist nicht gueltig. Das Programm und die Datei muessen in demselben Ordner stehen. ");
       }
+      Console.WriteLine("\r\nDrueck eine beliebige Taste zu schliessen...");
       Console.ReadKey();
     }
 
     private class Liga : GameModel
     {
-      public Liga(int[] playerStrengths, RNGProvider rngProvider)
+      public Liga(int[] playerStrengths)
       {
         _playerStrengths = playerStrengths;
         _winTimesTotal = new int[playerStrengths.Length];
         // Set default val to 0
         Array.Clear(_winTimesTotal, 0, _winTimesTotal.Length);
-        _rngProvider = rngProvider;
       }
 
       public override void PlayGameNth(int n)
@@ -88,7 +136,7 @@ namespace Aufgabe3
         {
           for (int againstPlayerNum = playerNumber + 1; againstPlayerNum < _playerStrengths.Length; againstPlayerNum++)
           {
-            if (_rngProvider.GetIntBetween(1, _playerStrengths[againstPlayerNum] + _playerStrengths[playerNumber]) <= _playerStrengths[playerNumber])
+            if (GetIntBetween(1, _playerStrengths[againstPlayerNum] + _playerStrengths[playerNumber]) <= _playerStrengths[playerNumber])
             {
               // 1. Player wins
               winTimes[playerNumber] += 1;
@@ -122,13 +170,12 @@ namespace Aufgabe3
     private class KOx1 : GameModel
     {
       private int[] _playPlan;
-      public KOx1(int[] playerStrengths, RNGProvider rngProvider, int[] playPlan)
+      public KOx1(int[] playerStrengths, int[] playPlan)
       {
         _playerStrengths = playerStrengths;
         _winTimesTotal = new int[playerStrengths.Length];
         // Set default val to 0
         Array.Clear(_winTimesTotal, 0, _winTimesTotal.Length);
-        _rngProvider = rngProvider;
         _playPlan = playPlan;
       }
 
@@ -147,7 +194,7 @@ namespace Aufgabe3
         for (int i = 0; i < initData.Length; i++) initData[i] = -1;
         _playPlan.CopyTo(initData, _playPlan.Length - 1);
         // Stores the play plan
-        Node<int> treeRoot = new CompleteBinaryTreeBuilder<int>(initData).Root;
+        Node<int> treeRoot = new BinaryTreeBuilder<int>(initData).Root;
         GetGameResult(treeRoot);
         _winTimesTotal[treeRoot.Data] += 1;
       }
@@ -168,7 +215,7 @@ namespace Aufgabe3
 
       private int GetWinner(Node<int> player1, Node<int> player2)
       {
-        if (_rngProvider.GetIntBetween(1, _playerStrengths[player1.Data] + _playerStrengths[player2.Data]) <= _playerStrengths[player1.Data])
+        if (GetIntBetween(1, _playerStrengths[player1.Data] + _playerStrengths[player2.Data]) <= _playerStrengths[player1.Data])
         {
           return player1.Data;
         }
@@ -179,13 +226,12 @@ namespace Aufgabe3
     private class KOx5 : GameModel
     {
       private int[] _playPlan;
-      public KOx5(int[] playerStrengths, RNGProvider rngProvider, int[] playPlan)
+      public KOx5(int[] playerStrengths, int[] playPlan)
       {
         _playerStrengths = playerStrengths;
         _winTimesTotal = new int[playerStrengths.Length];
         // Set default val to 0
         Array.Clear(_winTimesTotal, 0, _winTimesTotal.Length);
-        _rngProvider = rngProvider;
         _playPlan = playPlan;
       }
       public override void PlayGameOnce()
@@ -195,7 +241,7 @@ namespace Aufgabe3
         for (int i = 0; i < initData.Length; i++) initData[i] = -1;
         _playPlan.CopyTo(initData, _playPlan.Length - 1);
         // Stores the play plan
-        Node<int> treeRoot = new CompleteBinaryTreeBuilder<int>(initData).Root;
+        Node<int> treeRoot = new BinaryTreeBuilder<int>(initData).Root;
         GetGameResult(treeRoot);
         _winTimesTotal[treeRoot.Data] += 1;
       }
@@ -219,7 +265,7 @@ namespace Aufgabe3
         Array.Clear(winningTimeCount, 0, 2);
         for (int i = 0; i < 5; i++)
         {
-          if (_rngProvider.GetIntBetween(1, _playerStrengths[player1.Data] + _playerStrengths[player2.Data]) <= _playerStrengths[player1.Data]) winningTimeCount[0]++;
+          if (GetIntBetween(1, _playerStrengths[player1.Data] + _playerStrengths[player2.Data]) <= _playerStrengths[player1.Data]) winningTimeCount[0]++;
           else winningTimeCount[1]++;
         }
         return winningTimeCount[0] > winningTimeCount[1] ? player1.Data : player2.Data;
@@ -238,7 +284,6 @@ namespace Aufgabe3
     {
       protected int[] _winTimesTotal;
       protected int[] _playerStrengths;
-      protected RNGProvider _rngProvider;
       public abstract void PlayGameOnce();
       public abstract void PlayGameNth(int n);
       public double GetWinningProcentOfBestPlayer(out int bestPlayerNumber)
@@ -248,31 +293,13 @@ namespace Aufgabe3
         {
           if (_playerStrengths[i] > _playerStrengths[bestPlayerNumber]) bestPlayerNumber = i;
         }
+
         int totalTimes = 0;
         foreach (var i in _winTimesTotal)
         {
           totalTimes += i;
         }
         return (double)_winTimesTotal[bestPlayerNumber] / (double)totalTimes;
-      }
-      public double GetWinningProcentOfBestPlayerO(out int bestPlayerNumber)
-      {
-        bestPlayerNumber = -1;
-        int mostWinTimes = -1, totalTimes = 0;
-        for (int i = 0; i < _winTimesTotal.Length; i++)
-        {
-          totalTimes += _winTimesTotal[i];
-          if (_winTimesTotal[i] > mostWinTimes)
-          {
-            mostWinTimes = _winTimesTotal[i];
-            bestPlayerNumber = i;
-          }
-          else if (_winTimesTotal[i] == mostWinTimes)
-          {
-            bestPlayerNumber = bestPlayerNumber < i ? bestPlayerNumber : i;
-          }
-        }
-        return (double)mostWinTimes / (double)totalTimes;
       }
     }
 
@@ -290,10 +317,10 @@ namespace Aufgabe3
 
     }
 
-    private class CompleteBinaryTreeBuilder<T>
+    private class BinaryTreeBuilder<T>
     {
       public Node<T> Root { get; }
-      public CompleteBinaryTreeBuilder(params T[] dataArray)
+      public BinaryTreeBuilder(params T[] dataArray)
       {
         Root = build(dataArray, 0, null);
       }
@@ -309,18 +336,6 @@ namespace Aufgabe3
           return currentNode;
         }
         return null;
-      }
-    }
-
-    private class RNGProvider
-    {
-      private System.Random rng = new System.Random();
-
-      // i1 and i2 are inclusive
-      public int GetIntBetween(int i1, int i2)
-      {
-        if (i1 < 0 || i1 > i2) throw new ArgumentException(nameof(i1));
-        return rng.Next(i1, i2 + 1);
       }
     }
   }
