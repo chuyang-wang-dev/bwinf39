@@ -139,9 +139,9 @@ namespace JuniorAufgabe1
     }
 
 
-    /// Erweiterungsmethode, die eine Reihe zurueckgibt, in der alle moegliche Konbination von Buchstaben steht
+    /// Erweiterungsmethode, die einen Array zurueckgibt, in der alle moegliche Konbination von Buchstaben steht
     /// @param string s: Das vorher bereits generierte Teil-Passwort in Form von List<string>
-    /// @return string[]: Ein Feld, das alle moegliche Konbinationen von Buchstaben beinhaltet
+    /// @return string[]: Ein Array, das alle moegliche Konbinationen von Buchstaben beinhaltet
     private static string[] GetFollowableChars(this List<string> sL)
     {
       // Regel 2: nur Konsonantenbuchstaben und teils der
