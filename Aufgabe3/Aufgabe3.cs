@@ -11,11 +11,11 @@ namespace Aufgabe3
 {
   public static class Turnier
   {
-    private const int REPEAT = 1000000;
+    private const int REPEAT = 500000;
     private static System.Random rng = new System.Random();
 
     // Zufallszahlengenerator
-    // i1 and i2 are inclusive
+    // i1 and i2 sind inclusive
     private static int GetIntBetween(int i1, int i2)
     {
       if (i1 < 0 || i1 > i2) throw new ArgumentException(nameof(i1));
@@ -87,17 +87,17 @@ namespace Aufgabe3
           // Index ist 1 kleiner als die richtige Spielnummer
           // also bestPlayerNum + 1 , 
           // sodass anstatt des Indexes die Spielernummer gezeigt werden kann
-          Console.WriteLine($"KOx1: {bestPlayerNum + 1} - {procent}");
+          Console.WriteLine($"KOx1: {bestPlayerNum + 1} - {procent} - {1d / procent}");
 
           KOx5 koX5 = new KOx5(playerStrength, spielPlan);
           koX5.PlayGameNth(REPEAT);
           procent = koX5.GetWinningProcentOfBestPlayer(out bestPlayerNum);
-          Console.WriteLine($"KOx5: {bestPlayerNum + 1} - {procent}");
+          Console.WriteLine($"KOx5: {bestPlayerNum + 1} - {procent} - {1d / procent}");
 
           Liga liga = new Liga(playerStrength);
           liga.PlayGameNth(REPEAT);
           procent = liga.GetWinningProcentOfBestPlayer(out bestPlayerNum);
-          Console.WriteLine($"Liga: {bestPlayerNum + 1} - {procent}");
+          Console.WriteLine($"Liga: {bestPlayerNum + 1} - {procent} - {1d / procent}");
         }
       }
       else
@@ -114,40 +114,35 @@ namespace Aufgabe3
       {
         _playerStrengths = playerStrengths;
         _winTimesTotal = new int[playerStrengths.Length];
-        // Set default val to 0
+        // Anfangswert von 0
         Array.Clear(_winTimesTotal, 0, _winTimesTotal.Length);
-      }
-
-      public override void PlayGameNth(int n)
-      {
-        for (int i = 0; i < n; i++)
-        {
-          PlayGameOnce();
-        }
       }
 
       public override void PlayGameOnce()
       {
+        // Speichert, wer wie viel mal gewonnen hat
         int[] winTimes = new int[_playerStrengths.Length];
-        // Set default val to 0
+        // setzt die Anfangswerte zu 0
         Array.Clear(winTimes, 0, winTimes.Length);
-        // Array index = the player number - 1
+        // Array index = Spielernummer - 1
         for (int playerNumber = 0; playerNumber < _playerStrengths.Length - 1; playerNumber++)
         {
           for (int againstPlayerNum = playerNumber + 1; againstPlayerNum < _playerStrengths.Length; againstPlayerNum++)
           {
+            // Zufallszahl
             if (GetIntBetween(1, _playerStrengths[againstPlayerNum] + _playerStrengths[playerNumber]) <= _playerStrengths[playerNumber])
             {
-              // 1. Player wins
+              // Falls der 1. Spieler gewinnt
               winTimes[playerNumber] += 1;
             }
             else
             {
-              // 2. Player wins
+              // Falls der 2. Spieler gewinnt
               winTimes[againstPlayerNum] += 1;
             }
           }
         }
+        // Findet heraus, welcher Spieler am meisten gewonnen hat
         int highstScorePlayer = -1;
         int highstScore = -1;
         for (int i = 0; i < winTimes.Length; i++)
@@ -162,6 +157,7 @@ namespace Aufgabe3
             highstScorePlayer = highstScorePlayer < i ? highstScorePlayer : i;
           }
         }
+        // Erhoeht die Anzahl der Siege des Spielers um 1
         _winTimesTotal[highstScorePlayer] += 1;
       }
     }
@@ -179,40 +175,49 @@ namespace Aufgabe3
         _playPlan = playPlan;
       }
 
-      public override void PlayGameNth(int n)
-      {
-        for (int i = 0; i < n; i++)
-        {
-          PlayGameOnce();
-        }
-      }
-
       public override void PlayGameOnce()
       {
-        // Initialize the tree
+        // Speichert den Spielplan in ein anderes Array initData
+        // Welche zu einem Binaerbaum umgewandelt wird
+        // der Spielplan befindet sich quasi in den aeusserste Knoten
+        // alle andere Knoten haben einen Anfangswert von -1
+        // vgl. Dokumentation
         int[] initData = new int[_playPlan.Length * 2 - 1];
         for (int i = 0; i < initData.Length; i++) initData[i] = -1;
         _playPlan.CopyTo(initData, _playPlan.Length - 1);
-        // Stores the play plan
         Node<int> treeRoot = new BinaryTreeBuilder<int>(initData).Root;
+        // Der Sieger dieser Runde wird dann in der Wurzel(Root) gespeichert
         GetGameResult(treeRoot);
+        // Erhoeht die Anzahl der Siege des gewonnenen Spielers um 1
         _winTimesTotal[treeRoot.Data] += 1;
       }
 
+      // Stellt den Sieger des Turniers fest
+      // Der Binaerbaum wird deep-first traversiert
       private void GetGameResult(Node<int> currentNode)
       {
+        // Solange die jetzige Knoten noch Nachkommen hat
         if (currentNode.RightChild != null)
         {
+          // Ruf diese Methode recursiv auf fuer die Nachkommen
           GetGameResult(currentNode.LeftChild);
           GetGameResult(currentNode.RightChild);
+          // Nachdem das Ergebnis der Nachkommen festgestellt wird, 
+          // kann das Ergebnis der jetzigen Knoten bestimmt
+          // indem man Zufallszahlen waehlt und vergleicht
+          // vgl. GetWinner(...)
           currentNode.Data = GetWinner(currentNode.LeftChild, currentNode.RightChild);
         }
+        // Falls die jetzige Knoten kein Nachkommen mehr hat
         else
         {
+          // bestimmt man das Ergebnis zwischen dieser Knoten und ihrer "Schwester-Knoten"
           currentNode.Parent.Data = GetWinner(currentNode.Parent.LeftChild, currentNode.Parent.RightChild);
         }
       }
 
+      // Stellt fest, wer zwischen player1 und player2 diese Runde gewinnt
+      // und gibt die Nummer des gewonnenen Spielers zurueck
       private int GetWinner(Node<int> player1, Node<int> player2)
       {
         if (GetIntBetween(1, _playerStrengths[player1.Data] + _playerStrengths[player2.Data]) <= _playerStrengths[player1.Data])
@@ -236,29 +241,44 @@ namespace Aufgabe3
       }
       public override void PlayGameOnce()
       {
-        // Initialize the tree
+        // Speichert den Spielplan in ein anderes Array initData
+        // Welche zu einem Binaerbaum umgewandelt wird
+        // der Spielplan befindet sich quasi in den aeusserste Knoten
+        // vgl. Dokumentation
         int[] initData = new int[_playPlan.Length * 2 - 1];
         for (int i = 0; i < initData.Length; i++) initData[i] = -1;
         _playPlan.CopyTo(initData, _playPlan.Length - 1);
-        // Stores the play plan
         Node<int> treeRoot = new BinaryTreeBuilder<int>(initData).Root;
         GetGameResult(treeRoot);
         _winTimesTotal[treeRoot.Data] += 1;
       }
 
+      // Stellt den Sieger des Turniers fest
+      // Der Binaerbaum wird deep-first traversiert
       private void GetGameResult(Node<int> currentNode)
       {
+        // Solange die jetzige Knoten noch Nachkommen hat
         if (currentNode.RightChild != null)
         {
+          // Ruf sich recursiv auf fuer die Nachkommen Knoten
           GetGameResult(currentNode.LeftChild);
           GetGameResult(currentNode.RightChild);
+          // Nachdem das Ergebnis der Nachkommen festgestellt wird, 
+          // kann das Ergebnis der jetzigen Knoten bestimmt
+          // indem man Zufallszahlen waehlt und vergleicht
+          // vgl. GetWinner(...)
           currentNode.Data = GetWinner(currentNode.LeftChild, currentNode.RightChild);
         }
+        // Falls die jetzige Knoten kein Nachkommen mehr hat
         else
         {
+          // bestimmt man das Ergebnis zwischen dieser Knoten und ihres "Schwester-Knoten"
           currentNode.Parent.Data = GetWinner(currentNode.Parent.LeftChild, currentNode.Parent.RightChild);
         }
       }
+
+      // Stellt fest, wer zwischen player1 und player2 diese Runde gewinnt
+      // und gibt die Nummer des gewonnenen Spielers zurueck
       private int GetWinner(Node<int> player1, Node<int> player2)
       {
         int[] winningTimeCount = new int[2];
@@ -270,14 +290,6 @@ namespace Aufgabe3
         }
         return winningTimeCount[0] > winningTimeCount[1] ? player1.Data : player2.Data;
       }
-
-      public override void PlayGameNth(int n)
-      {
-        for (int i = 0; i < n; i++)
-        {
-          PlayGameOnce();
-        }
-      }
     }
 
     private abstract class GameModel
@@ -285,15 +297,23 @@ namespace Aufgabe3
       protected int[] _winTimesTotal;
       protected int[] _playerStrengths;
       public abstract void PlayGameOnce();
-      public abstract void PlayGameNth(int n);
+      public void PlayGameNth(int n)
+      {
+        for (int i = 0; i < n; i++)
+        {
+          PlayGameOnce();
+        }
+      }
       public double GetWinningProcentOfBestPlayer(out int bestPlayerNumber)
       {
+        // Nummer des Spielers mit der hoechsten Spielstaerke
         bestPlayerNumber = 0;
         for (int i = 0; i < _playerStrengths.Length; i++)
         {
           if (_playerStrengths[i] > _playerStrengths[bestPlayerNumber]) bestPlayerNumber = i;
         }
 
+        // Anzahl des durchgefuehrten Turniers
         int totalTimes = 0;
         foreach (var i in _winTimesTotal)
         {
@@ -320,19 +340,19 @@ namespace Aufgabe3
     private class BinaryTreeBuilder<T>
     {
       public Node<T> Root { get; }
-      public BinaryTreeBuilder(params T[] dataArray)
+      public BinaryTreeBuilder(T[] dataArray)
       {
-        Root = build(dataArray, 0, null);
+        Root = Build(dataArray, 0, null);
       }
 
-      private Node<T> build(T[] arr, int currentIndex, Node<T> parentNode)
+      private Node<T> Build(T[] arr, int currentIndex, Node<T> parentNode)
       {
         if (currentIndex < arr.Length)
         {
           Node<T> currentNode = new Node<T>(arr[currentIndex]);
           currentNode.Parent = parentNode;
-          currentNode.LeftChild = build(arr, currentIndex * 2 + 1, currentNode);
-          currentNode.RightChild = build(arr, currentIndex * 2 + 2, currentNode);
+          currentNode.LeftChild = Build(arr, currentIndex * 2 + 1, currentNode);
+          currentNode.RightChild = Build(arr, currentIndex * 2 + 2, currentNode);
           return currentNode;
         }
         return null;
