@@ -59,7 +59,7 @@ namespace JuniorAufgabe2
                 bool istSpezial = map[i, j + 1].IstHuegel() && map[i, j + 2].IstHuegel() && map[i + 1, j].IstHuegel() && map[i + 1, j + 2].IstHuegel() && map[i + 2, j].IstHuegel() && map[i + 2, j + 2].IstHuegel() && map[i + 3, j].IstHuegel() && map[i + 3, j + 1].IstHuegel() && map[i + 3, j + 2].IstHuegel();
                 // Testet, ob die beiden Planquadraten im Zentrum leer sind
                 // sodass es genau den Muster eines Baulwurfsbaues bildet
-                bool centerIstLeer = !(map[i+1, j+1].IstHuegel() || map[i+2, j+1].IstHuegel());
+                bool centerIstLeer = !(map[i + 1, j + 1].IstHuegel() || map[i + 2, j + 1].IstHuegel());
                 // Testet, ob die Huegel des Baues schon Teil eines anderen Baues ist  
                 bool sindBesucht = besucht[i, j + 1] || besucht[i, j + 2] || besucht[i + 1, j] || besucht[i + 1, j + 2] || besucht[i + 2, j] || besucht[i + 2, j + 2] || besucht[i + 3, j] || besucht[i + 3, j + 1] || besucht[i + 3, j + 2];
                 // Falls es der Fall ist
