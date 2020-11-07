@@ -39,3 +39,10 @@ Releases/
 !**/packages/build/
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/packages/repositories.config
+
+
+!Einsendung/
+!Einsendung/*
+!Einsendung/*.pdf
+!Einsendung/*/
+!Einsendung/*/*
