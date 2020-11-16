@@ -2,13 +2,13 @@
 */.vs/*
 .vs/
 *.pdf
-*.zip
 
 #Ignore the test cases
 Test/
 bwinf39-runde1/
 *.txt
 BeispielLoesungen/
+*.zip
 
 #Ignore the build files
 Debug/
@@ -47,3 +47,5 @@ Releases/
 !Einsendung/*.pdf
 !Einsendung/*/
 !Einsendung/*/*
+!Einsendung/*/*/*
+!Einsendung/*/*/*.txt
