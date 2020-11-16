@@ -45,6 +45,8 @@ namespace JuniorAufgabe1
     // Jedoch ist es schon sehr sinnvoll, eine relative kleine Zahl fuer A oder L zu geben. Bspw. A = 10, L = 16
     public static void Main(string[] args)
     {
+      Console.WriteLine("Geben Sie die Anzahl der zu generierende Passwoerter (A) und Laenge jedes Passwortes (L) an. ");
+      Console.WriteLine("A L");
       string[] input = Console.ReadLine().Split(' ');
       int testCases = Convert.ToInt32(input[0]);
       int length = Convert.ToInt32(input[1]);

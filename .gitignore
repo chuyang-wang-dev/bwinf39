@@ -2,6 +2,7 @@
 */.vs/*
 .vs/
 *.pdf
+*.zip
 
 #Ignore the test cases
 Test/
