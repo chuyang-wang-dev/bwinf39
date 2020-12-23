@@ -4,10 +4,10 @@
 *.pdf
 
 #Ignore the test cases
-Test/
-bwinf39-runde1/
+*/Test/
+*/bwinf39-runde1/
 *.txt
-BeispielLoesungen/
+*/BeispielLoesungen/
 *.zip
 
 #Ignore the build files
@@ -42,10 +42,10 @@ Releases/
 #!**/packages/repositories.config
 
 
-!Einsendung/
-!Einsendung/*
-!Einsendung/*.pdf
-!Einsendung/*/
-!Einsendung/*/*
-!Einsendung/*/*/*
-!Einsendung/*/*/*.txt
+!*/Einsendung/
+!*/Einsendung/*
+!*/Einsendung/*.pdf
+!*/Einsendung/*/
+!*/Einsendung/*/*
+!*/Einsendung/*/*/*
+!*/Einsendung/*/*/*.txt
