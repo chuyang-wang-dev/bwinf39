@@ -9,7 +9,7 @@ namespace Aufgabe1
 {
   public class Aufgabe1Stats
   {
-    private const int MAXIMUM_HEIGHT = 50;
+    private const int MAXIMUM_HEIGHT = 40;
     public List<double> UsedTimeEachBF { get; private set; }
     public List<double> UsedTimeEachTR { get; private set; }
     public Aufgabe1Stats()
