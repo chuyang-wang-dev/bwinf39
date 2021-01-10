@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Aufgabe1
 {
@@ -21,22 +19,11 @@ namespace Aufgabe1
     public void StartNth(int n)
     {
       Stopwatch sw = new Stopwatch();
-      if (FlohmarktManagement.DEBUG_demandCount > 25) Console.WriteLine("BF disabled\r\n-----------");
 
       for (int i = 0; i < n; i++)
       {
-        RandomBlockGenerator rbg = new RandomBlockGenerator(FlohmarktManagement.START_TIME, FlohmarktManagement.END_TIME, MAXIMUM_HEIGHT, FlohmarktManagement.DEBUG_demandCount);
+        RandomBlockGenerator rbg = new RandomBlockGenerator(FlohmarktManagement.START_TIME, FlohmarktManagement.END_TIME, MAXIMUM_HEIGHT, 15);
         List<int[]> testData = rbg.GetResult();
-
-        if (FlohmarktManagement.DEBUG_demandCount <= 25)
-        {
-          sw.Start();
-          var bruteForce = new BFFind(testData);
-          Console.WriteLine($"BF: {bruteForce.GetMaximum()}");
-          sw.Stop();
-          UsedTimeEachBF.Add(sw.ElapsedMilliseconds);
-          sw.Reset();
-        }
 
         sw.Start();
         FlohmarktManagement calc = new FlohmarktManagement(testData);
@@ -45,11 +32,14 @@ namespace Aufgabe1
         sw.Stop();
         UsedTimeEachTR.Add(sw.ElapsedMilliseconds);
         sw.Reset();
+        Console.WriteLine($"DP: {new BFFind(testData).GetMaximum()}");
 
         Console.WriteLine("----------------");
       }
     }
 
+    // Cf. Commit bcdbef
+    /*
     public AnalysisResult StartAnalysis(int startN, int endN, int interval, int overtime = 10000, int testFor = 10)
     {
       List<List<double>> runtimes = new List<List<double>>();
@@ -68,7 +58,7 @@ namespace Aufgabe1
       AnalysisResult result = new AnalysisResult(startN, endN, interval, overtime, runtimes);
       return result;
     }
-
+*/
 
     public class AnalysisResult
     {

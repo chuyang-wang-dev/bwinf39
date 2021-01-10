@@ -99,7 +99,7 @@ namespace Aufgabe1
 
       foreach (var part in set)
       {
-        for (int i = part[0]; i < part[1]; i++)
+        for (int i = part[0] - FlohmarktManagement.START_TIME; i < part[1] - FlohmarktManagement.START_TIME; i++)
         {
           table[i] += part[2];
           currentProfit += part[2];

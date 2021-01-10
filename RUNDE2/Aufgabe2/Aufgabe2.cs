@@ -23,34 +23,16 @@ namespace Aufgabe2
         // TODO: Check if not unique answer, try to give information
         List<int> conflictIndex = new List<int>();
         List<Row> resultRowsWithConflict = new List<Row>();
-        List<Row> resultRowsWithoutConflict = new List<Row>();
         for (int i = 0; i < entriesToFind.Length; i++)
         {
           if (!resultRowsWithConflict.Any(e => e.Left[entriesToFind[i]] != 0))
           {
             resultRowsWithConflict.Add(matrix.FindRow(entriesToFind[i]));
-            resultRowsWithoutConflict.Add(matrix.FindRow(entriesToFind[i]));
             for (int j = 0; j < resultRowsWithConflict[^1].Count; j++)
             {
               if (resultRowsWithConflict[^1].Left[j] != 0 && !entriesToFind.Contains(j))
               {
                 conflictIndex.Add(resultRowsWithConflict.Count - 1);
-                resultRowsWithoutConflict.RemoveAt(resultRowsWithoutConflict.Count - 1);
-                break;
-              }
-            }
-          }
-        }
-        for (int i = 0; i < entriesToFind.Length; i++)
-        {
-          if (!resultRowsWithoutConflict.Any(e => e.Left[entriesToFind[i]] != 0))
-          {
-            resultRowsWithoutConflict.Add(matrix.FindRow(entriesToFind[i]));
-            for (int j = 0; j < resultRowsWithoutConflict[^1].Count; j++)
-            {
-              if (resultRowsWithConflict[^1].Left[j] != 0 && !entriesToFind.Contains(j))
-              {
-                resultRowsWithoutConflict.RemoveAt(resultRowsWithoutConflict.Count - 1);
                 break;
               }
             }
@@ -58,22 +40,17 @@ namespace Aufgabe2
         }
 
         Row resC = Row.Condense(resultRowsWithConflict.ToArray());
-        Row resO = Row.Condense(resultRowsWithoutConflict.ToArray());
-        List<int> schlangeWithConflict = new List<int>();
-        List<int> schlangeWithoutConflict = new List<int>();
-        for (int colEntry = 0; colEntry < resC.Count; colEntry++)
-        {
-          if (resC.Right[colEntry] != 0) schlangeWithConflict.Add(colEntry);
-        }
-        for (int colEntry = 0; colEntry < resC.Count; colEntry++)
-        {
-          if (resO.Right[colEntry] != 0) schlangeWithoutConflict.Add(colEntry);
-        }
+        Row resO = Row.Condense(Enumerable.
+          Range(0, resultRowsWithConflict.Count).
+          Where(idx => !conflictIndex.Contains(idx)).
+          Select(i => resultRowsWithConflict[i]).
+          ToArray());
+        List<int> schlangeWithConflict = resC.GetRHSNonZeroEntries();
+        List<int> schlangeWithoutConflict = resO.GetRHSNonZeroEntries();
         #endregion
 
         #region OutPut
-        bool eindeutig = schlangeWithConflict.Count == schlangeWithoutConflict.Count
-          && schlangeWithConflict.All(schlangeWithoutConflict.Contains);
+        bool eindeutig = conflictIndex.Count == 0;
 
         Console.WriteLine("");
         Console.WriteLine($"Gesucht: {string.Join(",", data.Item3)}");
@@ -86,22 +63,19 @@ namespace Aufgabe2
         else
         {
           Console.WriteLine("Keine eindeutige Antwort konnte gefunden werden: ");
-          Console.WriteLine("Schlange, die besucht werden muessen, um ALLE gewuenschten Obst zu bekommen (aber moeglicherweise kann man auch weitere unerwuenschte Obstsorte bekommen): ");
+          Console.WriteLine("Schuesseln, die besucht werden muessen, um ALLE gewuenschten Obst zu bekommen (aber moeglicherweise kann man auch weitere unerwuenschte Obstsorte bekommen): ");
           Console.WriteLine(string.Join(",", schlangeWithConflict.Select(s => s + 1)));
           Console.WriteLine("");
-          Console.WriteLine("Schlange, die besucht werden muessen, um NUR gewuenschte Obst zu bekommen (aber moeglicherweise kann man nicht alle gewuenschten Obstsorten bekommen): ");
+          Console.WriteLine("Schuesseln, die besucht werden muessen, um NUR gewuenschte Obst zu bekommen (aber moeglicherweise kann man nicht alle gewuenschten Obstsorten bekommen): ");
         }
         Console.WriteLine(string.Join(",", schlangeWithoutConflict.Select(s => s + 1)));
 
         Console.WriteLine("\r\n----------------");
         Console.WriteLine("Weitere Einzelheiten: ");
-        if (!eindeutig) Console.WriteLine("(Zeilen, in denen keine eindeutige Antwort fuer die gesuchten Obstsorten gefunden werden kann, wird mit \"**\" am Anfang der Zeile markiert)");
+        if (!eindeutig) Console.WriteLine("(Zeilen, in denen keine eindeutige Antwort fuer die gesuchten Obstsorten gefunden werden kann, werden mit \"**\" am Anfang der Zeile markiert)\r\n");
         for (int i = 0; i < resultRowsWithConflict.Count; i++)
         {
-          if (conflictIndex.Contains(i))
-          {
-            Console.Write("**");
-          }
+          if (conflictIndex.Contains(i)) Console.Write("**");
           Console.WriteLine(resultRowsWithConflict[i].ToReadableFormat(data.Item5));
         }
         #endregion
@@ -369,6 +343,16 @@ namespace Aufgabe2
         {
           rtr.Left.AddFrom(rows[i].Left);
           rtr.Right.AddFrom(rows[i].Right);
+        }
+        return rtr;
+      }
+
+      public List<int> GetRHSNonZeroEntries()
+      {
+        List<int> rtr = new List<int>();
+        for (int colEntry = 0; colEntry < Count; colEntry++)
+        {
+          if (Right[colEntry] != 0) rtr.Add(colEntry);
         }
         return rtr;
       }

@@ -1,61 +1,64 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 
 namespace Aufgabe1
 {
   public class FlohmarktManagement
   {
-    // TODO: Delete Debug variables before submit
-    public const int DEBUG_demandCount = 500;
-
-    public const int HEIGHT = 1000;
-    public const int START_TIME = 0;
-    public const int END_TIME = 10;
+    public const int HEIGHT = 20;
+    public const int START_TIME = 8;
+    public const int END_TIME = 18;
     public const int INTERVAL_LENGTH = END_TIME - START_TIME;
     public static void Main(string[] args)
     {
-      Analyse();
-      /*
-      RandomBlockGenerator rbg = new RandomBlockGenerator(FlohmarktManagement.START_TIME, FlohmarktManagement.END_TIME, 40, FlohmarktManagement.DEBUG_demandCount);
-      List<int[]> testData = rbg.GetResult();
-
-      FlohmarktManagement calc = new FlohmarktManagement(testData);
-      calc.FindRelativSol();
-      */
+      Stopwatch sw = new Stopwatch();
+      Tuple<bool, int, List<int[]>> input = ReadInput();
+      sw.Start();
+      if (input.Item1)
+      {
+        FlohmarktManagement fm = new FlohmarktManagement(input.Item3);
+        fm.Process();
+        fm.PrintResult();
+        sw.Stop();
+      }
+      else
+      {
+        Console.WriteLine("Die gegebene Datei-Namen ist nicht gueltig. Das Programm und die Datei muessen in demselben Ordner stehen. ");
+      }
+      Console.WriteLine(sw.ElapsedMilliseconds);
       Console.ReadKey();
     }
 
-    private static void Analyse()
+
+    // IsSuccess, demandCount, data
+    private static Tuple<bool, int, List<int[]>> ReadInput()
     {
-      Aufgabe1Stats stats = new Aufgabe1Stats();
-      var a = stats.StartAnalysis(10, 1010, 50, 20000, 5);
-      /*
-      Console.WriteLine("");
-      Console.WriteLine("Bruteforce Avg:");
-      Console.WriteLine($"{stats.GetAverange(stats.UsedTimeEachBF)}");
-      Console.WriteLine("Bruteforce S Diviation:");
-      Console.WriteLine($"{stats.GetStandardDeviation(stats.UsedTimeEachBF)}");
+      Console.WriteLine("Bitte Name der Test-Datei eingeben...");
+      string testFilePath = Console.ReadLine();
 
-      Console.WriteLine($"------------------");
-
-      Console.WriteLine("Tree Avg:");
-      Console.WriteLine($"{stats.GetAverange(stats.UsedTimeEachTR)}");
-      Console.WriteLine("Tree S Diviation:");
-      Console.WriteLine($"{stats.GetStandardDeviation(stats.UsedTimeEachTR)}");
-
-            var rbg = new RandomBlockGenerator(FlohmarktManagement.START_TIME, FlohmarktManagement.END_TIME, FlohmarktManagement.HEIGHT, FlohmarktManagement.DEBUG_demandCount, 401882730);
-            List<int[]> testData = rbg.GetResult();
-
-            var bruteForce = new BFFind(testData);
-            Console.WriteLine($"BF: {bruteForce.GetMaximum()}");
-
-            FlohmarktManagement calc = new FlohmarktManagement(testData);
-            calc.Process();
-            Console.WriteLine($"DP: {calc.HighestProfit}");
-
-      */
+      if (File.Exists(testFilePath))
+      {
+        using (StreamReader sr = File.OpenText(testFilePath))
+        {
+          int demandCount = Convert.ToInt32(sr.ReadLine().Trim());
+          List<int[]> data = new List<int[]>();
+          for (int i = 0; i < demandCount; i++)
+          {
+            data.Add(sr.ReadLine().Trim().
+              Split(' ').
+              Select(s => Convert.ToInt32(s.Trim())).
+              Append(i).  // arr[3]: Als ID des Anbieters, um zu unterscheiden
+              ToArray());
+          }
+          return new Tuple<bool, int, List<int[]>>(true, demandCount, data);
+        }
+      }
+      else return new Tuple<bool, int, List<int[]>>(false, -1, null);
     }
+
 
     private readonly List<int[]> demands;
     private readonly bool[] avaliable;
@@ -68,26 +71,15 @@ namespace Aufgabe1
 
     public int DEBUG_changedCount = 0;
     public int DEBUG_pruningCount = 0;
-    public long UsedTime { get; private set; }
-    private int timeLimit = Int32.MaxValue;
-    public bool Finished { get; private set; }
-    private Stopwatch sw;
 
     public FlohmarktManagement(List<int[]> demands)
     {
-      this.demands = new List<int[]>();
-      foreach (int[] item in demands)
-      {
-        // Deep Copy
-        this.demands.Add((int[])item.Clone());
-      }
-      //QuickSort.Sort(this.demands, 0, demands.Count - 1);
+      this.demands = new List<int[]>(demands);
       currentDeleted = new Stack<int>();
       avaliable = new bool[demands.Count];
       for (int i = 0; i < demands.Count; i++) avaliable[i] = true;
       currentMap = new int[INTERVAL_LENGTH];
 
-      BestCombination = new List<int[]>();
       HighestProfit = 0;
 
       // Initialize the map
@@ -95,7 +87,7 @@ namespace Aufgabe1
       {
         for (int i = 0; i < demands.Count; i++)
         {
-          if (avaliable[i] && demands[i][0] <= c && demands[i][1] > c)
+          if (avaliable[i] && demands[i][0] <= c + START_TIME && demands[i][1] > c + START_TIME)
           {
             cCount += demands[i][2];
           }
@@ -103,42 +95,23 @@ namespace Aufgabe1
         currentMap[c] = cCount;
       }
       highestValPossible = CalcMaximumProfit();
-
-      sw = new Stopwatch();
     }
 
-    public void FindRelativSol()
+    public void PrintResult()
     {
-      Finished = true;
-      ProcessWithTimeout(60000);
-      if (!Finished)
+      if (BestCombination != null)
       {
-        timeLimit = 30000;
-        UsedTime = 0;
-        for (int low = 0, high = highestValPossible, searching = (low + high) / 2;
-             low < high-1 && !Finished;
-            searching = (low + high + 1) / 2, UsedTime = 0, sw.Reset())
-        {
-          Finished = true;
-          HighestProfit = searching;
-          sw.Start();
-          RecRemove(FindFirstConflictCol(0));
-
-          if (HighestProfit > searching) low = HighestProfit;
-          else high = searching;
-        }
-
+        Console.WriteLine("Die beste Auswahl ist (Hier werden die betroffenen Anbieter gezeigt wie das Format der Eingabe): ");
+        foreach (int[] item in BestCombination) Console.WriteLine(
+          string.Join(" ", Enumerable.
+            Range(0, 3).
+            Select(i => item[i])));
+        Console.WriteLine("-------------------");
+        Console.WriteLine("Zusammenfassung: ");
+        Console.WriteLine($"Diese Auswahl besteht aus {BestCombination.Count} Anbietern. ");
+        Console.WriteLine($"Die Mieteinnahme betraegt {HighestProfit} Euro. ");
       }
-    }
-
-    public void ProcessWithTimeout(int timeout)
-    {
-      UsedTime = 0;
-      timeLimit = timeout;
-      sw.Start();
-      Process();
-      sw.Stop();
-      sw.Reset();
+      else throw new InvalidOperationException("Data is not processed yet. ");
     }
 
     public void Process()
@@ -151,17 +124,17 @@ namespace Aufgabe1
         RecRemove(FindFirstConflictCol(0));
 
         if (BestCombination != null) break;
-        if (timeLimit < UsedTime)
-        {
-          HighestProfit = -1;
-          return;
-        }
       }
+    }
+
+    public void Process1()
+    {
+      HighestProfit = 0;
+      RecRemove(FindFirstConflictCol(0));
     }
 
     private void RecRemove(Tuple<int, List<int[]>> firstConflict)
     {
-      UsedTime = sw.ElapsedMilliseconds;
 
       int max = CalcMaximumProfit();
       // If smaller or equal the current highest, do pruning
@@ -170,7 +143,6 @@ namespace Aufgabe1
         // Pop the last deleted obj and set it to avaliable
         Restore();
         DEBUG_pruningCount++;
-
         return;
       }
 
@@ -189,22 +161,13 @@ namespace Aufgabe1
 
       foreach (int[] conflictObj in firstConflict.Item2)
       {
-        if (timeLimit < UsedTime)
-        {
-          Finished = false;
-          Restore();
-          return;
-        }
         if (HighestProfit == highestValPossible) return;
         int conflictIndex = demands.FindIndex(item => item[3] == conflictObj[3]);
         Delete(conflictIndex);
 
         RecRemove(FindFirstConflictCol(firstConflict.Item1));
       }
-
-
       Restore();
-
     }
 
     private void Delete(int index)
@@ -214,7 +177,7 @@ namespace Aufgabe1
 
       for (int i = demands[index][0]; i < demands[index][1]; i++)
       {
-        currentMap[i] -= demands[index][2];
+        currentMap[i - START_TIME] -= demands[index][2];
       }
     }
 
@@ -226,7 +189,7 @@ namespace Aufgabe1
 
       for (int i = demands[index][0]; i < demands[index][1]; i++)
       {
-        currentMap[i] += demands[index][2];
+        currentMap[i - START_TIME] += demands[index][2];
       }
     }
 
@@ -235,24 +198,19 @@ namespace Aufgabe1
     {
       List<int[]> currentCol;
       // Traverse the cols
-      for (int c = startCol, count = 0; c < INTERVAL_LENGTH; c++, count = 0)
+      for (int c = startCol; c < INTERVAL_LENGTH; c++)
       {
-        currentCol = new List<int[]>();
         if (currentMap[c] <= HEIGHT) continue;
+        currentCol = new List<int[]>();
         // Traverse the demand list
-        // TODO: Binary Search to improve performance
         for (int i = 0; i < demands.Count; i++)
         {
-          if (avaliable[i] && demands[i][0] <= c && demands[i][1] > c)
+          if (avaliable[i] && demands[i][0] <= c + START_TIME && demands[i][1] > c + START_TIME)
           {
             currentCol.Add(demands[i]);
-            count += demands[i][2];
           }
         }
-        if (count > HEIGHT)
-        {
-          return new Tuple<int, List<int[]>>(c, currentCol);
-        }
+        return new Tuple<int, List<int[]>>(c, currentCol);
       }
       return new Tuple<int, List<int[]>>(-1, null);
     }
@@ -269,32 +227,30 @@ namespace Aufgabe1
 
     private List<int[]> GetCurrentCombination()
     {
-      List<int[]> l = new List<int[]>();
-      for (int i = 0; i < demands.Count; i++)
-      {
-        if (avaliable[i]) l.Add(demands[i]);
-      }
-      return l;
+      return Enumerable.
+        Range(0, demands.Count).
+        Where(i => avaliable[i]).
+        Select(i => demands[i]).
+        ToList();
     }
 
-    // Angonommen, die eingegebenen Daten ist nicht nach End_time sortiert
     private static class QuickSort
     {
-      public static void Sort(List<int[]> arr, int low, int high)
+      public static void Sort(int[] arr, int low, int high)
       {
         if (high <= low) return;
 
-        int pIndex = Partition(arr, low, high, (a, b) => a[1] - b[1], (a, b) => a[2] * (a[1] - a[0]) - b[2] * (b[1] - b[0]));
+        int pIndex = Partition(arr, low, high);
         Sort(arr, low, pIndex - 1);
         Sort(arr, pIndex + 1, high);
       }
 
-      private static int Partition(List<int[]> arr, int low, int high, Comparison<int[]> cp1, Comparison<int[]> cp2)
+      private static int Partition(int[] arr, int low, int high)
       {
         int i = low - 1;
         for (int j = low; j < high; j++)
         {
-          if (cp1(arr[j], arr[high]) < 0 || (cp1(arr[j], arr[high]) == 0 && cp2(arr[j], arr[high]) > 0))
+          if (arr[j] < arr[high])
           {
             Swap(arr, ++i, j);
           }
@@ -303,52 +259,13 @@ namespace Aufgabe1
         return i;
       }
 
-      public static void SortBySizeD(List<int[]> arr, int low, int high)
-      {
-        if (high <= low) return;
-
-        int pIndex = Partition(arr, low, high, (a, b) => b[2] * (b[1] - b[0]) - a[2] * (a[1] - a[0]), (a, b) => 0);
-        SortBySizeD(arr, low, pIndex - 1);
-        SortBySizeD(arr, pIndex + 1, high);
-      }
-
-      private static void Swap(List<int[]> arr, int i1, int i2)
+      private static void Swap(int[] arr, int i1, int i2)
       {
         if (i1 == i2) return;
-        int[] temp = arr[i1];
+        int temp = arr[i1];
         arr[i1] = arr[i2];
         arr[i2] = temp;
       }
     }
   }
-
-  public static class IListExtensions
-  {
-    // Using binary search to insert 
-    // Time complexity: O(nlogn)
-    public static void InsertWithOrder<T>(this IList<T> l, T val, Comparison<T> cp)
-    {
-      int left = 0, right = l.Count - 1;
-      while (right > left)
-      {
-        int checkPointIdx = (right + left) / 2;
-        int res = cp(l[checkPointIdx], val);
-        if (res == 0)
-        {
-          l.Insert(checkPointIdx, val);
-          return;
-        }
-        else if (res > 0)
-        {
-          right = checkPointIdx - 1;
-        }
-        else
-        {
-          left = checkPointIdx + 1;
-        }
-      }
-      l.Insert(left, val);
-    }
-  }
-
 }
