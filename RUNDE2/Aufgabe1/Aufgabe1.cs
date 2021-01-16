@@ -8,7 +8,7 @@ namespace Aufgabe1
 {
   public class FlohmarktManagement
   {
-    public const int HEIGHT = 20;
+    public const int HEIGHT = 1000;
     public const int START_TIME = 8;
     public const int END_TIME = 18;
     public const int INTERVAL_LENGTH = END_TIME - START_TIME;
@@ -20,7 +20,7 @@ namespace Aufgabe1
       if (input.Item1)
       {
         FlohmarktManagement fm = new FlohmarktManagement(input.Item3);
-        fm.Process();
+        fm.Process1();
         fm.PrintResult();
         sw.Stop();
       }
@@ -121,7 +121,8 @@ namespace Aufgabe1
       for (int i = highestValPossible - 1; i > 0; i -= (int)Math.Ceiling(100d / (double)demands.Count))
       {
         HighestProfit = i;
-        RecRemove(FindFirstConflictCol(0));
+        var res = FindFirstConflictCol(0);
+        RecRemove(res.Item1, res.Item2, res.Item3, 0);
 
         if (BestCombination != null) break;
       }
@@ -130,42 +131,55 @@ namespace Aufgabe1
     public void Process1()
     {
       HighestProfit = 0;
-      RecRemove(FindFirstConflictCol(0));
+      var res = FindFirstConflictCol(0);
+      if (res.Item1 != -1) RecRemove(res.Item1, res.Item2, res.Item3, 0);
+      else
+      {
+        HighestProfit = highestValPossible;
+        BestCombination = GetCurrentCombination();
+      }
     }
 
-    private void RecRemove(Tuple<int, List<int[]>> firstConflict)
+    private void RecRemove(int col, List<int[]> allRequests, List<int> indecesOfDemands, int startFrom)
     {
-
-      int max = CalcMaximumProfit();
-      // If smaller or equal the current highest, do pruning
-      if (max <= HighestProfit)
+      for (int i = startFrom; i < allRequests.Count; i++)
       {
-        // Pop the last deleted obj and set it to avaliable
-        Restore();
-        DEBUG_pruningCount++;
-        return;
-      }
+        Delete(indecesOfDemands[i]);
 
-      // If compatible at this stage
-      if (firstConflict.Item1 < 0)
-      {
-        // Update highest profit
-        HighestProfit = max;
-        BestCombination = GetCurrentCombination();
+        int max = CalcMaximumProfit();
+        // If smaller or equal the current highest, do pruning
+        if (max <= HighestProfit)
+        {
+          // Pop the last deleted obj and set it to avaliable
+          Restore();
+          DEBUG_pruningCount++;
+          break;
+        }
 
-        // Pop the last deleted obj and set it to avaliable
-        Restore();
-        DEBUG_changedCount++;
-        return;
-      }
+        if (currentMap[col] <= HEIGHT)
+        {
+          Tuple<int, List<int[]>, List<int>> res = FindFirstConflictCol(col + 1);
+          // If compatible at this stage
+          if (res.Item1 == -1)
+          {
+            // Update highest profit
+            HighestProfit = max;
+            BestCombination = GetCurrentCombination();
 
-      foreach (int[] conflictObj in firstConflict.Item2)
-      {
-        if (HighestProfit == highestValPossible) return;
-        int conflictIndex = demands.FindIndex(item => item[3] == conflictObj[3]);
-        Delete(conflictIndex);
-
-        RecRemove(FindFirstConflictCol(firstConflict.Item1));
+            // Pop the last deleted obj and set it to avaliable
+            Restore();
+            DEBUG_changedCount++;
+            break;
+          }
+          else
+          {
+            RecRemove(res.Item1, res.Item2, res.Item3, 0);
+          }
+        }
+        else
+        {
+          RecRemove(col, allRequests, indecesOfDemands, i + 1);
+        }
       }
       Restore();
     }
@@ -194,25 +208,29 @@ namespace Aufgabe1
     }
 
     // Col starts with index 0; Search starts with col 0
-    private Tuple<int, List<int[]>> FindFirstConflictCol(int startCol = 0)
+    // Tuple: int conflictCol, List<int[]> conflictRequests, List<int> conflictIndecesOfConflictRequestsInDemands
+    private Tuple<int, List<int[]>, List<int>> FindFirstConflictCol(int startCol = 0)
     {
-      List<int[]> currentCol;
       // Traverse the cols
       for (int c = startCol; c < INTERVAL_LENGTH; c++)
       {
         if (currentMap[c] <= HEIGHT) continue;
-        currentCol = new List<int[]>();
+        List<int[]> currentCol = new List<int[]>(40);
+        List<int> indeces = new List<int>(40);
         // Traverse the demand list
         for (int i = 0; i < demands.Count; i++)
         {
+          // TODO: Maybe sort demands at first and then here could be binary search?
           if (avaliable[i] && demands[i][0] <= c + START_TIME && demands[i][1] > c + START_TIME)
           {
             currentCol.Add(demands[i]);
+            indeces.Add(i);
           }
         }
-        return new Tuple<int, List<int[]>>(c, currentCol);
+        QuickSort.Sort(currentCol, 0, currentCol.Count - 1, indeces);
+        return new Tuple<int, List<int[]>, List<int>>(c, currentCol, indeces);
       }
-      return new Tuple<int, List<int[]>>(-1, null);
+      return new Tuple<int, List<int[]>, List<int>>(-1, null, null);
     }
 
     private int CalcMaximumProfit()
@@ -236,7 +254,31 @@ namespace Aufgabe1
 
     private static class QuickSort
     {
-      public static void Sort(int[] arr, int low, int high)
+      public static void Sort(List<int[]> arr, int low, int high, List<int> changeWith)
+      {
+        if (high <= low) return;
+
+        int pIndex = PartitionWith(arr, low, high, changeWith);
+        Sort(arr, low, pIndex - 1, changeWith);
+        Sort(arr, pIndex + 1, high, changeWith);
+      }
+      private static int PartitionWith(List<int[]> arr, int low, int high, List<int> changeWith)
+      {
+        int i = low - 1;
+        for (int j = low; j < high; j++)
+        {
+          if (arr[j].GetSize() < arr[high].GetSize())
+          {
+            Swap(arr, ++i, j);
+            Swap(changeWith, i, j);
+          }
+        }
+        Swap(arr, ++i, high);
+        Swap(changeWith, i, high);
+        return i;
+      }
+
+      public static void Sort(List<int[]> arr, int low, int high)
       {
         if (high <= low) return;
 
@@ -245,12 +287,12 @@ namespace Aufgabe1
         Sort(arr, pIndex + 1, high);
       }
 
-      private static int Partition(int[] arr, int low, int high)
+      private static int Partition(List<int[]> arr, int low, int high)
       {
         int i = low - 1;
         for (int j = low; j < high; j++)
         {
-          if (arr[j] < arr[high])
+          if (arr[j].GetSize() < arr[high].GetSize())
           {
             Swap(arr, ++i, j);
           }
@@ -259,13 +301,21 @@ namespace Aufgabe1
         return i;
       }
 
-      private static void Swap(int[] arr, int i1, int i2)
+      private static void Swap<T>(List<T> arr, int i1, int i2)
       {
         if (i1 == i2) return;
-        int temp = arr[i1];
+        T temp = arr[i1];
         arr[i1] = arr[i2];
         arr[i2] = temp;
       }
+    }
+  }
+
+  public static class IExtensions
+  {
+    public static int GetSize(this int[] requestData)
+    {
+      return (requestData[1] - requestData[0]) * requestData[2];
     }
   }
 }

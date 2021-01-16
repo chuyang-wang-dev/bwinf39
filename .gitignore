@@ -16,6 +16,7 @@ Release/
 
 bin/
 obj/
+lib/
 
 #Ignore the release folder
 Releases/
