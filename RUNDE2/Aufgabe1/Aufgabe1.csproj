@@ -6,6 +6,12 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishSingleFile>true</PublishSingleFile>
     <PublishTrimmed>true</PublishTrimmed>
+
+    <RestoreSources>packages;$(RestoreSources);</RestoreSources>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.OrTools" Version="8.1.*" />
+  </ItemGroup>
 
 </Project>

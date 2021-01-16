@@ -26,9 +26,9 @@ namespace Aufgabe1
         List<int[]> testData = rbg.GetResult();
 
         sw.Start();
-        FlohmarktManagement calc = new FlohmarktManagement(testData);
-        calc.Process();
-        Console.WriteLine($"DP: {calc.HighestProfit}");
+        //FlohmarktManagement calc = new FlohmarktManagement(testData);
+        //calc.Process();
+        //Console.WriteLine($"DP: {calc.HighestProfit}");
         sw.Stop();
         UsedTimeEachTR.Add(sw.ElapsedMilliseconds);
         sw.Reset();
