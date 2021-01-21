@@ -20,7 +20,6 @@ namespace Aufgabe2
 
         #region  Format Data to be readable
         int[] entriesToFind = data.Item3.Select(s => data.Item4[s]).ToArray();
-        // TODO: Check if not unique answer, try to give information
         List<int> conflictIndex = new List<int>();
         List<Row> resultRowsWithConflict = new List<Row>();
         for (int i = 0; i < entriesToFind.Length; i++)
@@ -127,6 +126,7 @@ namespace Aufgabe2
             }
             rows[i] = new Row(new Vector(LHS), new Vector(RHS));
           }
+          // Add implied information
           rows[^1] = new Row(new Vector(Enumerable.Range(0, obstCount).Select(_ => (sbyte)1)), new Vector(Enumerable.Range(0, obstCount).Select(_ => (sbyte)1)));
           Matrix data = new Matrix(rows);
           for (int j = 0; j < toFind.Length; j++)

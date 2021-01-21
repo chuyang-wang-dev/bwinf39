@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Google.OrTools.LinearSolver;
+using Aufgabe1.LinearProgramming;
+using rat = Rationals.Rational;
 
 namespace Aufgabe1
 {
@@ -15,17 +16,14 @@ namespace Aufgabe1
     public const int INTERVAL_LENGTH = END_TIME - START_TIME;
     public static void Main(string[] args)
     {
+      LinearSolver.Tester.Test();
       Stopwatch sw = new Stopwatch();
       Tuple<bool, int, List<int[]>> input = ReadInput();
       sw.Start();
       if (input.Item1)
       {
-        // new List<int[]>() {new int[]{10,11,1,0}, new int[]{10,11,3,1}, new int[]{10,11,3,2}, new int[]{11,12,1,3}, new int[]{10,12,1,4}}
-        Solve(input.Item3, new List<Tuple<int, bool>>());
+        Solve(input.Item3);
         sw.Stop();
-        var cs = new CompleteSearch(input.Item3);
-        cs.Process1();
-        cs.PrintResult();
       }
       else
       {
@@ -62,48 +60,37 @@ namespace Aufgabe1
       else return new Tuple<bool, int, List<int[]>>(false, -1, null);
     }
 
-    private static void Solve(List<int[]> data, List<Tuple<int, bool>> extraConstraints)
+    public static void Solve(List<int[]> data)
     {
-      Solver solver = Solver.CreateSolver("SCIP");
+      LinearSolver.Tester.GoogleSolve(data);
 
-      // Initialize Xn Variablen
-      List<Variable> Xn = new List<Variable>();
-      for (int i = 0; i < data.Count; i++)
-      {
-        Xn.Add(solver.MakeIntVar(0, 1, $"X{i}"));
-      }
-
-      // Constraints
-      List<Constraint> constraints = new List<Constraint>();
+      List<LinearConstraint> constraints = new List<LinearConstraint>();
       for (int i = 0; i < INTERVAL_LENGTH; i++)
       {
-        var c = solver.MakeConstraint(0, HEIGHT, $"Ccol{i}");
+        var c = new LinearConstraint(HEIGHT, LinearProgramming.LinearConstraint.InequalityType.SmallerOrEqualTo);
         var colItems = GetItemsInCol(i, data);
         foreach (var item in colItems)
         {
-          c.SetCoefficient(Xn[item], data[item][2]);
+          c.SetCoefficient($"x{item}", data[item][2]);
         }
         constraints.Add(c);
       }
-      for (int i = 0; i < extraConstraints.Count; i++)
-      {
-        int val = extraConstraints[i].Item2 ? 1 : 0;
-        var c = solver.MakeConstraint(val, val, $"EC{i}");
-        c.SetCoefficient(Xn[extraConstraints[i].Item1], 1);
-        constraints.Add(c);
-      }
-
-      var objective = solver.Objective();
       for (int i = 0; i < data.Count; i++)
       {
-        objective.SetCoefficient(Xn[i], data[i].GetSize());
+        constraints.Add(new LinearConstraint(new string[] { $"x{i}" }, new rat[] { 1 }, 1, LinearProgramming.LinearConstraint.InequalityType.SmallerOrEqualTo));
       }
-      objective.SetMaximization();
 
-      if (solver.Solve() == Solver.ResultStatus.OPTIMAL)
-      {
-        System.Console.WriteLine(solver.Objective().Value());
-      }
+
+      var objective = new Objective(Enumerable.Range(0, data.Count)
+                                                                .Select(i => $"x{i}")
+                                                                .ToArray(),
+                                                      Enumerable.Range(0, data.Count)
+                                                                .Select(i => (rat)data[i].GetSize())
+                                                                .ToArray());
+
+      var linearSolver = new LinearSolver(constraints.ToArray(), objective);
+      linearSolver.Solve();
+      System.Console.WriteLine(string.Join("\r\n", linearSolver.BestSolution.Select(kvp => kvp.Key + ": " + kvp.Value)));
     }
 
     private static int[] GetItemsInCol(int c, List<int[]> data)
@@ -123,7 +110,29 @@ namespace Aufgabe1
 
     public static bool IsInt(this double d)
     {
-      return Math.Abs(d % 1) <= (Double.Epsilon * 100);
+      return Math.Abs(d % 1) <= (Double.Epsilon * 1E8);
+    }
+
+    public static bool RoughlyEqualTo(this double d1, double d2)
+    {
+      double epsilon = Math.Max(Math.Abs(d1), Math.Abs(d2)) * 1E-14;
+      return Math.Abs(d1 - d2) <= epsilon;
+    }
+
+    public static bool IsInt(this decimal d)
+    {
+      return Math.Abs(Math.Round(d, 10) - d) <= d * (decimal)1E-10;
+    }
+
+    public static bool RoughlyEqualTo(this decimal d1, decimal d2)
+    {
+      decimal epsilon = Math.Max(Math.Abs(d1), Math.Abs(d2)) * (decimal)1E-14;
+      return Math.Abs(d1 - d2) <= epsilon;
+    }
+
+    public static bool Equal(this rat r1, rat r2)
+    {
+      return (r1 - r2).IsZero;
     }
   }
 }

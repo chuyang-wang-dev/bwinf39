@@ -136,6 +136,7 @@ namespace Aufgabe1
     }
   }
 
+  // DEBUG
   public class CompleteSearch
   {
     public const int HEIGHT = 1000;
