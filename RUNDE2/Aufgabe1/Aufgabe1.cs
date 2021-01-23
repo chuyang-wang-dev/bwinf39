@@ -16,7 +16,6 @@ namespace Aufgabe1
     public const int INTERVAL_LENGTH = END_TIME - START_TIME;
     public static void Main(string[] args)
     {
-      LinearSolver.Tester.Test();
       Stopwatch sw = new Stopwatch();
       Tuple<bool, int, List<int[]>> input = ReadInput();
       sw.Start();

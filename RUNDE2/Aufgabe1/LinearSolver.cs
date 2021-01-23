@@ -40,7 +40,8 @@ namespace Aufgabe1.LinearProgramming
       if (!c.IsInfeasible)
       {
         if (globalLowerBound > c.Upperbound) return;
-        if (globalLowerBound < c.Lowerbound) {
+        if (globalLowerBound < c.Lowerbound)
+        {
           // BestSolution = c.Answer;
           globalLowerBound = c.Lowerbound;
         }
@@ -50,7 +51,8 @@ namespace Aufgabe1.LinearProgramming
         {
           toSearch.Clear();
           BestSolution = new Dictionary<string, rat>();
-          foreach (var kvp in c.Answer) {
+          foreach (var kvp in c.Answer)
+          {
             BestSolution.Add(kvp.Key, kvp.Value.CanonicalForm);
           }
           return;
@@ -108,9 +110,15 @@ namespace Aufgabe1.LinearProgramming
         }
       }
 
-      public int CompareTo(ConstraintWithMax that) {
-        if (Lowerbound > that.Lowerbound) return 1;
-        else if (Lowerbound == that.Lowerbound) return 0;
+      public int CompareTo(ConstraintWithMax that)
+      {
+        if (Upperbound > that.Upperbound) return 1;
+        else if (Upperbound == that.Upperbound)
+        {
+          if (Lowerbound > that.Lowerbound) return 1;
+          else if (Lowerbound == that.Lowerbound) return 0;
+          else return -1;
+        }
         else return -1;
       }
     }
@@ -204,7 +212,7 @@ namespace Aufgabe1.LinearProgramming
   }
   public class Simplex
   {
-    public const int M = 100000;
+    public const int M = 20000;
     public ResultType Result { get; private set; }
     public Dictionary<string, rat> Answer { get; private set; }
     private static readonly Random rnd = new Random();
