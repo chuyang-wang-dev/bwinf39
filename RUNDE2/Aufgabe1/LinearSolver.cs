@@ -4,6 +4,7 @@ using System.Linq;
 using rat = Rationals.Rational;
 using Aufgabe1.DataStructure;
 using Google.OrTools.LinearSolver;
+using System.Diagnostics;
 
 namespace Aufgabe1.LinearProgramming
 {
@@ -91,6 +92,8 @@ namespace Aufgabe1.LinearProgramming
         s.Solve();
         if (s.Result == Simplex.ResultType.OPTIMAL)
         {
+          s.Cut(10);
+          // Constraints.AddRange();
           Answer = s.Answer;
           rat maximalVal = s.Answer[obj.LHSVariableNames[0]];
           rat lowerBound = 0;
@@ -212,18 +215,19 @@ namespace Aufgabe1.LinearProgramming
   }
   public class Simplex
   {
-    public const int M = 20000;
+    public const int M = 100000;
     public ResultType Result { get; private set; }
     public Dictionary<string, rat> Answer { get; private set; }
     private static readonly Random rnd = new Random();
 
 
-    private readonly rat[][] left;
-    private readonly string[] entryVariableNames;
+    private readonly List<List<rat>> left;
+    private readonly List<string> entryVariableNames;
     private readonly Dictionary<string, int> namesToEntries;
-    private readonly rat[] right;
-    private readonly string[] rowPivotsNames;
+    private readonly List<rat> right;
+    private readonly List<string> rowPivotsNames;
     private readonly int userVarCount;
+    private int slackCount;
 
     public Simplex(LinearConstraint[] LCs, Objective objective)
     {
@@ -256,15 +260,14 @@ namespace Aufgabe1.LinearProgramming
       int rowCount = LCs.Length + 1;
       // Ptr (col entry) fuer slack, surplus and artificial vars
       int colPtr = objective.Count;
-
-      left = new rat[rowCount][];
-      entryVariableNames = new string[colCount];
+      //rat[rowCount][]
+      left = new List<List<rat>>(rowCount);
+      entryVariableNames = new List<string>(new string[colCount]);
       namesToEntries = new Dictionary<string, int>();
-      right = new rat[rowCount];
-      rowPivotsNames = new string[rowCount];
+      right = new List<rat>(new rat[rowCount]);
+      rowPivotsNames = new List<string>(new string[rowCount]);
 
-      // Ausnahmesweise, da es die erste Zeile ist
-      left[0] = new rat[colCount];
+      left.Add(new List<rat>(new rat[colCount]));
       for (int i = 0; i < objective.Count; i++)
       {
         left[0][i] = objective.LHSVariableCoefficients[i];
@@ -276,11 +279,11 @@ namespace Aufgabe1.LinearProgramming
 
 
       // Fuer Constraints
-      int slackCount = 0, artificialCount = 0;
+      slackCount = 0; int artificialCount = 0;
       for (int row = 1; row <= LCs.Length; row++)
       {
         right[row] = LCs[row - 1].RHSValue;
-        left[row] = new rat[colCount];
+        left.Add(new List<rat>(new rat[colCount]));
         for (int j = 0; j < LCs[row - 1].Count; j++)
         {
           if (namesToEntries.TryGetValue(LCs[row - 1].LHSVariableNames[j], out int entry))
@@ -330,6 +333,7 @@ namespace Aufgabe1.LinearProgramming
     public void Solve()
     {
       if (Result == ResultType.NO_FEASIBLE_SOL) return;
+
       int FindMostNegativValCol()
       {
         int c = 1;
@@ -337,7 +341,7 @@ namespace Aufgabe1.LinearProgramming
         {
           c
         };
-        for (int i = 2; i < left[0].Length; i++)
+        for (int i = 2; i < left[0].Count; i++)
         {
           if (left[0][c] > left[0][i]) // && !left[0][c].RoughlyEqualTo(left[0][i])
           {
@@ -347,16 +351,17 @@ namespace Aufgabe1.LinearProgramming
           }
           else if (left[0][c].Equal(left[0][i])) allCols.Add(i);
         }
-        if (left[0][c] >= 0 || left[0][c].IsZero) return -1;
+        if (left[0][c] >= 0) return -1;
         return allCols[rnd.Next(allCols.Count)];
       }
+
       int FindSmallestRatioRow(int inCol)
       {
         int r = 1;
-        while (left[r][inCol].IsZero || left[r][inCol] < 0) r++;
-        for (int i = r + 1; i < left.Length; i++)
+        while (left[r][inCol] <= 0) r++;
+        for (int i = r + 1; i < left.Count; i++)
         {
-          if (!left[i][inCol].IsZero && right[i] / left[i][inCol] >= 0 && left[i][inCol] > 0
+          if (left[i][inCol] > 0 && right[i] / left[i][inCol] >= 0
               && right[r] / left[r][inCol] > right[i] / left[i][inCol])
           {
             r = i;
@@ -371,7 +376,7 @@ namespace Aufgabe1.LinearProgramming
         int row = FindSmallestRatioRow(col);
         rowPivotsNames[row] = entryVariableNames[col];
         ReduceRow(row, col);
-        for (int i = 0; i < left.Length; i++)
+        for (int i = 0; i < left.Count; i++)
         {
           if (i == row) continue;
           if (!left[i][col].IsZero)
@@ -388,7 +393,7 @@ namespace Aufgabe1.LinearProgramming
         {
           Answer.Add(entryVariableNames[i], 0);
         }
-        for (int i = 0; i < rowPivotsNames.Length; i++)
+        for (int i = 0; i < rowPivotsNames.Count; i++)
         {
           if (Answer.ContainsKey(rowPivotsNames[i]))
             Answer[rowPivotsNames[i]] = right[i];
@@ -398,14 +403,137 @@ namespace Aufgabe1.LinearProgramming
       else Result = ResultType.NO_FEASIBLE_SOL;
     }
 
+    // Gomory Cut and reoptimize with dual method
+    public LinearConstraint[] Cut(int n)
+    {
+      if (Result != ResultType.OPTIMAL)
+      {
+        Debug.WriteLine("Error: Cut without solved");
+        return null;
+      }
+
+      List<LinearConstraint> rtr = new List<LinearConstraint>(n);
+      for (int row = 1, count = 0; row < right.Count && count < n; row++)
+      {
+        if (right[row].FractionPart != 0)
+        {
+          while (right[row].WholePart == 0) AddRow(row, 1, row);
+          count++;
+          var newCons = new LinearConstraint(right[row].FractionPart * -1, LinearConstraint.InequalityType.SmallerOrEqualTo);
+          // Turn from >= to <= by reversing sign (* -1)
+          right.Add(right[row].FractionPart * -1);
+          for (int i = 0; i < left.Count; i++) left[i].Add(0);
+          left.Add(new List<rat>(new rat[left[0].Count]));
+          for (int col = 1; col < left[0].Count - 1; col++)
+          {
+            // same as above
+            left[^1][col] = left[row][col].FractionPart * -1;
+            newCons.SetCoefficient(entryVariableNames[col], left[row][col].FractionPart * -1);
+          }
+
+          // new slack Var
+          left[^1][^1] = 1;
+          namesToEntries.Add($"s{slackCount}", left[0].Count - 1);
+          entryVariableNames.Add($"s{slackCount}");
+          rowPivotsNames.Add($"s{slackCount}");
+          slackCount++;
+
+          ReduceRow(row, namesToEntries[rowPivotsNames[row]]);
+
+          // TODO: DUAL METHOD
+          // COMPLETE IT
+          DualSolve();
+
+          if (!IsFeasibleSol())
+          {
+            Result = ResultType.NO_FEASIBLE_SOL;
+          }
+
+          for (int i = 0; i < userVarCount; i++)
+          {
+            Answer[entryVariableNames[i]] = 0;
+          }
+          for (int i = 0; i < rowPivotsNames.Count; i++)
+          {
+            if (Answer.ContainsKey(rowPivotsNames[i]))
+              Answer[rowPivotsNames[i]] = right[i].CanonicalForm;
+            if (right[i].CanonicalForm > 1 && rowPivotsNames[i][0] == 'x')
+            {
+              System.Console.WriteLine();
+            }
+          }
+
+          rtr.Add(newCons);
+          row = 1;
+        }
+      }
+
+      return rtr.ToArray();
+    }
+
+    // Solve using dual 
+    // bzw. transposed matrix
+    private void DualSolve()
+    {
+      int GetMostNegativeRow()
+      {
+        List<int> rtr = new List<int>() { 1 };
+        for (int r = 2; r < right.Count; r++)
+        {
+          if (right[r] < right[rtr[0]])
+          {
+            rtr.Clear();
+            rtr.Add(r);
+          }
+          else if (right[r] == rtr[0]) rtr.Add(r);
+        }
+        if (rtr[0] >= 0) return -1;
+        return rtr[rnd.Next(rtr.Count)];
+      }
+
+      int GetMinRatioCol(int r)
+      {
+        int col = 1;
+        while (left[r][col] >= 0) col++;
+        for (int c = col + 1; c < left.Count; c++)
+        {
+          if (left[r][c] < 0 && left[0][c] / left[r][c] <= 0)
+          {
+            if (left[0][c] / left[r][c] > left[0][col] / left[r][col])
+              col = c;
+          }
+        }
+        return col;
+      }
+
+      int row = GetMostNegativeRow();
+      while (row != -1)
+      {
+        int col = GetMinRatioCol(row);
+        rowPivotsNames[row] = entryVariableNames[col];
+        ReduceRow(row, col);
+        for (int i = 0; i < left.Count; i++)
+        {
+          if (i == row) continue;
+          if (!left[i][col].IsZero)
+          {
+            AddRow(row, left[i][col] * -1, i);
+          }
+        }
+        row = GetMostNegativeRow();
+      }
+    }
+
     private void ReduceRow(int row, int respectToCol)
     {
       rat divisor = left[row][respectToCol];
-      for (int i = 0; i < left[0].Length; i++)
+      for (int i = 0; i < left[0].Count; i++)
       {
         left[row][i] /= divisor;
+        left[row][i] = left[row][i].CanonicalForm;
       }
       right[row] /= divisor;
+      right[row] = right[row].CanonicalForm;
       left[row][respectToCol] = 1;
     }
 
@@ -413,7 +541,7 @@ namespace Aufgabe1.LinearProgramming
     {
       right[toRow] += right[row] * coefficient;
       right[toRow] = right[toRow].CanonicalForm;
-      for (int col = 0; col < left[0].Length; col++)
+      for (int col = 0; col < left[0].Count; col++)
       {
         left[toRow][col] += left[row][col] * coefficient;
         left[toRow][col] = left[toRow][col].CanonicalForm;
@@ -422,10 +550,10 @@ namespace Aufgabe1.LinearProgramming
 
     private bool HasFeasibleSol()
     {
-      for (int i = 1; i < rowPivotsNames.Length; i++)
+      for (int i = 1; i < rowPivotsNames.Count; i++)
       {
         rat cf = left[i][namesToEntries[rowPivotsNames[i]]];
-        if (right[i] / cf < 0 && !(right[i] / cf).IsZero)
+        if (right[i] / cf < 0)
         {
           return false;
         }
@@ -436,7 +564,7 @@ namespace Aufgabe1.LinearProgramming
     private bool IsFeasibleSol()
     {
       if (!HasFeasibleSol()) return false;
-      for (int i = 1; i < rowPivotsNames.Length; i++)
+      for (int i = 1; i < rowPivotsNames.Count; i++)
       {
         if (rowPivotsNames[i][0] == 'a' && !right[i].IsZero) return false;
       }
