@@ -46,11 +46,6 @@ namespace Aufgabe1.DataStructure
       if (IsLeaf(pos))
         return;
 
-      if (heapLst[pos].CompareTo(heapLst[pos * 2]) < 0)
-      {
-
-      }
-
       if (heapLst[pos].CompareTo(heapLst[pos * 2]) < 0
           || (heapLst.Count > pos * 2 + 1 && heapLst[pos].CompareTo(heapLst[pos * 2 + 1]) < 0))
       {
