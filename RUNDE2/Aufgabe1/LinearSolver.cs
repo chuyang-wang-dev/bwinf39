@@ -5,6 +5,7 @@ using rat = Rationals.Rational;
 using Aufgabe1.DataStructure;
 using Google.OrTools.LinearSolver;
 using System.Diagnostics;
+using System.IO;
 
 namespace Aufgabe1.LinearProgramming
 {
@@ -43,7 +44,6 @@ namespace Aufgabe1.LinearProgramming
         if (globalLowerBound > c.Upperbound) return;
         if (globalLowerBound < c.Lowerbound)
         {
-          // BestSolution = c.Answer;
           globalLowerBound = c.Lowerbound;
         }
 
@@ -86,7 +86,7 @@ namespace Aufgabe1.LinearProgramming
         Simplex s = new Simplex(LCs, obj);
         s.Solve();
         if (s.Result == Simplex.ResultType.NO_FEASIBLE_SOL) throw new Exception();
-        //s.Cut(5);
+        s.Cut(10);
         Answer = s.Answer;
         Tableau = s;
         rat maximalVal = s.Answer[obj.LHSVariableNames[0]];
@@ -99,7 +99,10 @@ namespace Aufgabe1.LinearProgramming
         }
         Upperbound = maximalVal;
         Lowerbound = lowerBound * -1;
-        IsInfeasible = false;
+        if (s.Result != Simplex.ResultType.OPTIMAL)
+        {
+          IsInfeasible = true;
+        }
       }
 
 
@@ -110,7 +113,7 @@ namespace Aufgabe1.LinearProgramming
         s.DualSolve();
         if (s.Result == Simplex.ResultType.OPTIMAL)
         {
-          //s.Cut(5);
+          s.Cut(5);
           Answer = s.Answer;
           Tableau = s;
           rat maximalVal = s.Answer[obj.LHSVariableNames[0]];
@@ -123,7 +126,10 @@ namespace Aufgabe1.LinearProgramming
           }
           Upperbound = maximalVal;
           Lowerbound = lowerBound * -1;
-          IsInfeasible = false;
+          if (s.Result != Simplex.ResultType.OPTIMAL)
+          {
+            IsInfeasible = true;
+          }
         }
         else
         {
@@ -198,36 +204,41 @@ namespace Aufgabe1.LinearProgramming
 
       public static void Test()
       {
-        Solver solver = Solver.CreateSolver("SCIP");
-        var v1 = solver.MakeIntVar(0, 1, "v1");
-        var v2 = solver.MakeIntVar(0, 1, "v2");
-        var v3 = solver.MakeIntVar(0, 1, "v3");
-        var v4 = solver.MakeIntVar(0, 1, "v4");
-        var v5 = solver.MakeIntVar(0, 1, "v5");
-        solver.Add(v1 * 1 + v2 * 3 + v3 * 3 + v4 * 1 <= 4);
-        solver.Add(v4 * 1 + v5 * 1 <= 4);
-        solver.Maximize(v1 * 1 + v2 * 3 + v3 * 3 + v4 * 1 + v5 * 2);
-        solver.Solve();
-        Console.WriteLine("Objective value = " + solver.Objective().Value());
-        Console.WriteLine("v1 = " + v1.SolutionValue());
-        Console.WriteLine("v2 = " + v2.SolutionValue());
-        Console.WriteLine("v3 = " + v3.SolutionValue());
-        Console.WriteLine("v4 = " + v4.SolutionValue());
-        Console.WriteLine("v5 = " + v5.SolutionValue());
+        //   Solver solver = Solver.CreateSolver("SCIP");
+        //   var v1 = solver.MakeIntVar(0, 1, "v1");
+        //   var v2 = solver.MakeIntVar(0, 1, "v2");
+        //   var v3 = solver.MakeIntVar(0, 1, "v3");
+        //   var v4 = solver.MakeIntVar(0, 1, "v4");
+        //   var v5 = solver.MakeIntVar(0, 1, "v5");
+        //   solver.Add(v1 * 1 + v2 * 3 + v3 * 3 + v4 * 1 <= 4);
+        //   solver.Add(v4 * 1 + v5 * 1 <= 4);
+        //   solver.Maximize(v1 * 1 + v2 * 3 + v3 * 3 + v4 * 1 + v5 * 2);
+        //   solver.Solve();
+        //   Console.WriteLine("Objective value = " + solver.Objective().Value());
+        //   Console.WriteLine("v1 = " + v1.SolutionValue());
+        //   Console.WriteLine("v2 = " + v2.SolutionValue());
+        //   Console.WriteLine("v3 = " + v3.SolutionValue());
+        //   Console.WriteLine("v4 = " + v4.SolutionValue());
+        //   Console.WriteLine("v5 = " + v5.SolutionValue());
 
+        //   var lcs = new LinearConstraint[] {
+        //   new LinearConstraint(new string[] { "v1" }, new rat[] { 1}, 1, LinearConstraint.InequalityType.SmallerOrEqualTo),
+        //   new LinearConstraint(new string[] { "v2" }, new rat[] { 1}, 1, LinearConstraint.InequalityType.SmallerOrEqualTo),
+        //   new LinearConstraint(new string[] { "v3" }, new rat[] { 1}, 1, LinearConstraint.InequalityType.SmallerOrEqualTo),
+        //   new LinearConstraint(new string[] { "v4" }, new rat[] { 1}, 1, LinearConstraint.InequalityType.SmallerOrEqualTo),
+        //   new LinearConstraint(new string[] { "v5" }, new rat[] { 1}, 1, LinearConstraint.InequalityType.SmallerOrEqualTo),
+        //   new LinearConstraint(new string[] { "v1", "v2", "v3", "v4" }, new rat[] { 1,3,3,1}, 4, LinearConstraint.InequalityType.SmallerOrEqualTo),
+        //   new LinearConstraint(new string[] { "v4", "v5" }, new rat[] { 1,1}, 4, LinearConstraint.InequalityType.SmallerOrEqualTo),
+        // };
+        //   var obj = new Objective(new string[] { "v1", "v2", "v3", "v4", "v5" }, new rat[] { 1, 3, 3, 1, 2 });
+        //   var ls = new LinearSolver(lcs, obj);
+        //}
         var lcs = new LinearConstraint[] {
-        new LinearConstraint(new string[] { "v1" }, new rat[] { 1}, 1, LinearConstraint.InequalityType.SmallerOrEqualTo),
-        new LinearConstraint(new string[] { "v2" }, new rat[] { 1}, 1, LinearConstraint.InequalityType.EqualTo),
-        new LinearConstraint(new string[] { "v2" }, new rat[] { 1}, 1, LinearConstraint.InequalityType.SmallerOrEqualTo),
-        new LinearConstraint(new string[] { "v3" }, new rat[] { 1}, 0, LinearConstraint.InequalityType.EqualTo),
-        new LinearConstraint(new string[] { "v3" }, new rat[] { 1}, 1, LinearConstraint.InequalityType.SmallerOrEqualTo),
-        new LinearConstraint(new string[] { "v4" }, new rat[] { 1}, 1, LinearConstraint.InequalityType.SmallerOrEqualTo),
-        new LinearConstraint(new string[] { "v5" }, new rat[] { 1}, 1, LinearConstraint.InequalityType.SmallerOrEqualTo),
-        new LinearConstraint(new string[] { "v1", "v2", "v3", "v4" }, new rat[] { 1,3,3,1}, 4, LinearConstraint.InequalityType.SmallerOrEqualTo),
-        new LinearConstraint(new string[] { "v4", "v5" }, new rat[] { 1,1}, 4, LinearConstraint.InequalityType.SmallerOrEqualTo),
-      };
-        var obj = new Objective(new string[] { "v1", "v2", "v3", "v4", "v5" }, new rat[] { 1, 3, 3, 1, 2 });
-        var ls = new LinearSolver(lcs, obj);
+        new LinearConstraint(new string[] {"v1", "v2"}, new rat[] {-5,4}, 0, LinearConstraint.InequalityType.SmallerOrEqualTo),
+        new LinearConstraint(new string[] {"v1", "v2"}, new rat[] {5,2}, 15, LinearConstraint.InequalityType.SmallerOrEqualTo)
+        };
+        var o = new Objective(new string[] { "v1", "v2" }, new rat[] { 1, 1 });
+        var ls = new LinearSolver(lcs, o);
         ls.Solve();
       }
     }
@@ -235,6 +246,7 @@ namespace Aufgabe1.LinearProgramming
   public class Simplex
   {
     public const int M = 100000;
+    public const int CUT_D_LIMIT = 300;
     public ResultType Result { get; private set; }
     public Dictionary<string, rat> Answer { get; private set; }
     private static readonly Random rnd = new Random();
@@ -279,7 +291,6 @@ namespace Aufgabe1.LinearProgramming
       int rowCount = LCs.Length + 1;
       // Ptr (col entry) fuer slack, surplus and artificial vars
       int colPtr = objective.Count;
-      //rat[rowCount][]
       Left = new List<List<rat>>(rowCount);
       EntryVariableNames = new List<string>(new string[colCount]);
       NamesToEntries = new Dictionary<string, int>();
@@ -369,6 +380,8 @@ namespace Aufgabe1.LinearProgramming
       if (lc.Type != LinearConstraint.InequalityType.SmallerOrEqualTo)
         throw new NotImplementedException();
 
+      if (lc.LHSVariableCoefficients.Count == 0 && lc.RHSValue.IsZero) return;
+
       Right.Add(lc.RHSValue);
       for (int i = 0; i < Left.Count; i++) Left[i].Add(0);
       Left.Add(new List<rat>(new rat[Left[0].Count]));
@@ -384,7 +397,7 @@ namespace Aufgabe1.LinearProgramming
       RowPivotsNames.Add($"s{SlackCount}");
       SlackCount++;
 
-      for (int i = 1; i < UserVarCount; i++)
+      for (int i = 1; i < Left[0].Count - 1; i++)
       {
         if (Left[^1][i] > 0 && RowPivotsNames.Contains(EntryVariableNames[i]))
         {
@@ -409,7 +422,7 @@ namespace Aufgabe1.LinearProgramming
         };
         for (int i = 2; i < Left[0].Count; i++)
         {
-          if (Left[0][c] > Left[0][i]) // && !Left[0][c].RoughlyEqualTo(Left[0][i])
+          if (Left[0][c] > Left[0][i])
           {
             c = i;
             allCols.Clear();
@@ -470,32 +483,31 @@ namespace Aufgabe1.LinearProgramming
         return;
       }
 
-      for (int row = 1, count = 0; row < Right.Count && count < n; row++)
+      for (int count = 0; count < n; count++)
       {
-        if (Right[row].FractionPart != 0 && Right[row].WholePart != 0)
+        int r = 1;
+        while (Right[r].FractionPart == 0)
         {
-          //while (Right[row].WholePart == 0) AddRow(row, 1, row);
-          count++;
+          r++;
+          if (r == Right.Count) return;
 
-          // Turn from >= to <= by reversing sign (* -1)
-          LinearConstraint newLc = new LinearConstraint(Right[row].FractionPart * -1, LinearConstraint.InequalityType.SmallerOrEqualTo);
-          for (int col = 1; col < Left[0].Count - 1; col++)
-          {
-            newLc.SetCoefficient(EntryVariableNames[col], Left[row][col].FractionPart * -1);
-          }
-          //ReduceRow(row, NamesToEntries[RowPivotsNames[row]]);
-
-          AddConstraint(newLc);
-
-          DualSolve();
-
-          if (!IsFeasibleSol())
-          {
-            Result = ResultType.NO_FEASIBLE_SOL;
-          }
-
-          SetAnswer();
         }
+        for (int row = 2; row < Right.Count; row++)
+        {
+          if (Right[row].FractionPart != 0)
+          {
+            if (Right[row].Denominator > CUT_D_LIMIT) continue;
+            if (Right[r].FractionPart < Right[row].FractionPart) r = row;
+          }
+        }
+        // Turn from >= to <= by reversing sign (* -1)
+        LinearConstraint newLc = new LinearConstraint(Right[r].FractionPart * -1, LinearConstraint.InequalityType.SmallerOrEqualTo);
+        for (int col = 1; col < Left[0].Count; col++)
+        {
+          newLc.SetCoefficient(EntryVariableNames[col], Left[r][col].FractionPart * -1);
+        }
+        AddConstraint(newLc);
+        DualSolve();
       }
     }
 
@@ -533,7 +545,7 @@ namespace Aufgabe1.LinearProgramming
             rtr.Clear();
             rtr.Add(r);
           }
-          else if (Right[r] == rtr[0]) rtr.Add(r);
+          else if (Right[r].Equal(Right[rtr[0]])) rtr.Add(r);
         }
         if (Right[rtr[0]] >= 0) return -1;
         return rtr[rnd.Next(rtr.Count)];
@@ -547,10 +559,14 @@ namespace Aufgabe1.LinearProgramming
           col++;
           if (col >= Left[r].Count) return -1;
         }
-        for (int c = col + 1; c < Left.Count; c++)
+        for (int c = col + 1; c < Left[0].Count; c++)
         {
-          if (Left[r][c] < 0 && Left[0][c] / Left[r][c] <= 0)
+          if (Left[r][c] < 0) 
           {
+            if (!(Left[0][c] / Left[r][c] <= 0))
+            {
+              throw new Exception();
+            }
             if (Left[0][c] / Left[r][c] > Left[0][col] / Left[r][col])
               col = c;
           }
@@ -580,14 +596,17 @@ namespace Aufgabe1.LinearProgramming
         row = GetMostNegativeRow();
       }
 
-      Solve();
-      // if (IsFeasibleSol()) SetAnswer();
-      // else Result = ResultType.NO_FEASIBLE_SOL;
+      // Solve();
+      if (IsFeasibleSol()) SetAnswer();
+      else
+      {
+        Result = ResultType.NO_FEASIBLE_SOL;
+      }
     }
 
     private void ReduceRow(int row, int respectToCol)
     {
-      rat divisor = Left[row][respectToCol];
+      rat divisor = Left[row][respectToCol].CanonicalForm;
       for (int i = 0; i < Left[0].Count; i++)
       {
         Left[row][i] /= divisor;
@@ -595,16 +614,15 @@ namespace Aufgabe1.LinearProgramming
       }
       Right[row] /= divisor;
       Right[row] = Right[row].CanonicalForm;
-      Left[row][respectToCol] = 1;
     }
 
     private void AddRow(int row, rat coefficient, int toRow)
     {
-      Right[toRow] += Right[row] * coefficient;
+      Right[toRow] = Right[toRow] + Right[row] * coefficient;
       Right[toRow] = Right[toRow].CanonicalForm;
       for (int col = 0; col < Left[0].Count; col++)
       {
-        Left[toRow][col] += Left[row][col] * coefficient;
+        Left[toRow][col] = Left[toRow][col] + Left[row][col] * coefficient;
         Left[toRow][col] = Left[toRow][col].CanonicalForm;
       }
     }
@@ -629,6 +647,40 @@ namespace Aufgabe1.LinearProgramming
         if (RowPivotsNames[i][0] == 'a' && !Right[i].IsZero) return false;
       }
       return true;
+    }
+
+    // TODO: DEBUG
+    public void ToFile()
+    {
+      string path = "F:\\repos\\JWI2020\\RUNDE2\\Aufgabe1\\t.txt";
+      File.AppendAllText(path, "\r\n\r\n");
+      File.AppendAllText(path, ToString());
+    }
+
+    public override string ToString()
+    {
+      static string GetSpace(int c)
+      {
+        if (c < 0) return "";
+        return string.Join("", Enumerable.Range(0, c).Select(c => " "));
+      }
+
+      string SEPERATOR = ", ";
+      int MAX_WIDTH = 8;
+
+      string result = "--" + GetSpace(MAX_WIDTH - 2) + SEPERATOR;
+      result += string.Join(SEPERATOR, EntryVariableNames.Select(s => s + GetSpace(MAX_WIDTH - s.Length)));
+      result += " | RH ";
+
+      for (int i = 0; i < Left.Count; i++)
+      {
+        result += "\r\n";
+        result += RowPivotsNames[i] + GetSpace(MAX_WIDTH - RowPivotsNames[i].Length) + SEPERATOR;
+        result += string.Join(SEPERATOR, Left[i].Select(r => r + GetSpace(MAX_WIDTH - r.ToString().Length)));
+        result += $" | {Right[i]}";
+      }
+
+      return result;
     }
 
     public enum ResultType

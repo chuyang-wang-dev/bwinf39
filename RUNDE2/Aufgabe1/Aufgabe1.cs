@@ -133,5 +133,10 @@ namespace Aufgabe1
     {
       return (r1 - r2).IsZero;
     }
+
+    public static rat Copy(this rat r) {
+      if (r.Denominator.Equals(0)) return 0;
+      return new rat(r.Numerator, r.Denominator);
+    }
   }
 }
