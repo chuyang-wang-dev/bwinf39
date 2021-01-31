@@ -6,6 +6,7 @@ using Aufgabe1.DataStructure;
 using Google.OrTools.LinearSolver;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 
 namespace Aufgabe1.LinearProgramming
 {
@@ -16,7 +17,9 @@ namespace Aufgabe1.LinearProgramming
     private readonly Heap<ConstraintWithMax> toSearch;
     private rat globalLowerBound;
 
-    public Dictionary<string, rat> BestSolution;
+    public Dictionary<string, rat> BestSolution { get; private set; }
+    public Dictionary<string, rat> CurrentSolution { get; private set; }
+    public bool IsCompleted { get; private set; }
 
 
     public LinearSolver(LinearConstraint[] LCs, Objective objective)
@@ -27,24 +30,40 @@ namespace Aufgabe1.LinearProgramming
       globalLowerBound = 0;
     }
 
-    public void Solve()
+    public void Solve(CancellationToken cancelToken)
     {
-      var c = new ConstraintWithMax(originConstraints, objective);
-      SolveOne(c);
+      var c = new ConstraintWithMax(originConstraints, objective, cancelToken);
+      SolveOne(c, cancelToken);
       while (toSearch.Count != 0)
       {
-        SolveOne(toSearch.Pop());
+        SolveOne(toSearch.Pop(), cancelToken);
+        if (cancelToken.IsCancellationRequested)
+        {
+          return;
+        }
       }
+      IsCompleted = true;
     }
 
-    private void SolveOne(ConstraintWithMax c)
+    private void SolveOne(ConstraintWithMax c, CancellationToken cancelToken)
     {
+      if (cancelToken.IsCancellationRequested)
+      {
+        IsCompleted = false;
+        return;
+      }
       if (!c.IsInfeasible)
       {
         if (globalLowerBound > c.Upperbound) return;
         if (globalLowerBound < c.Lowerbound)
         {
           globalLowerBound = c.Lowerbound;
+          CurrentSolution = new Dictionary<string, rat>();
+          foreach (var kvp in c.Answer)
+          {
+            CurrentSolution.Add(kvp.Key, kvp.Value.WholePart);
+            CurrentSolution["P"] = c.Lowerbound;
+          }
         }
 
         // int sol found
@@ -65,9 +84,9 @@ namespace Aufgabe1.LinearProgramming
           if (!(pair.Value.FractionPart == 0))
           {
             LinearConstraint zero = new LinearConstraint(new string[] { pair.Key }, new rat[] { 1 }, 0, LinearConstraint.InequalityType.SmallerOrEqualTo);
-            toSearch.Add(new ConstraintWithMax(c.Tableau, zero, objective));
+            toSearch.Add(new ConstraintWithMax(c.Tableau, zero, objective, cancelToken));
             LinearConstraint one = new LinearConstraint(new string[] { pair.Key }, new rat[] { -1 }, -1, LinearConstraint.InequalityType.SmallerOrEqualTo);
-            toSearch.Add(new ConstraintWithMax(c.Tableau, one, objective));
+            toSearch.Add(new ConstraintWithMax(c.Tableau, one, objective, cancelToken));
           }
         }
       }
@@ -81,12 +100,12 @@ namespace Aufgabe1.LinearProgramming
       public bool IsInfeasible;
       public Simplex Tableau { get; }
 
-      public ConstraintWithMax(LinearConstraint[] LCs, Objective obj)
+      public ConstraintWithMax(LinearConstraint[] LCs, Objective obj, CancellationToken cancelToken)
       {
         Simplex s = new Simplex(LCs, obj);
         s.Solve();
         if (s.Result == Simplex.ResultType.NO_FEASIBLE_SOL) throw new Exception();
-        s.Cut(10);
+        s.Cut(10, cancelToken);
         Answer = s.Answer;
         Tableau = s;
         rat maximalVal = s.Answer[obj.LHSVariableNames[0]];
@@ -106,14 +125,15 @@ namespace Aufgabe1.LinearProgramming
       }
 
 
-      public ConstraintWithMax(Simplex old, LinearConstraint lc, Objective obj)
+      public ConstraintWithMax(Simplex old, LinearConstraint lc, Objective obj, CancellationToken cancelToken)
       {
         Simplex s = new Simplex(old);
         s.AddConstraint(lc);
-        s.DualSolve();
+        s.DualSolve(cancelToken);
         if (s.Result == Simplex.ResultType.OPTIMAL)
         {
-          s.Cut(5);
+          s.Cut(5, cancelToken);
+          if (cancelToken.IsCancellationRequested) return;
           Answer = s.Answer;
           Tableau = s;
           rat maximalVal = s.Answer[obj.LHSVariableNames[0]];
@@ -233,13 +253,13 @@ namespace Aufgabe1.LinearProgramming
         //   var obj = new Objective(new string[] { "v1", "v2", "v3", "v4", "v5" }, new rat[] { 1, 3, 3, 1, 2 });
         //   var ls = new LinearSolver(lcs, obj);
         //}
-        var lcs = new LinearConstraint[] {
-        new LinearConstraint(new string[] {"v1", "v2"}, new rat[] {-5,4}, 0, LinearConstraint.InequalityType.SmallerOrEqualTo),
-        new LinearConstraint(new string[] {"v1", "v2"}, new rat[] {5,2}, 15, LinearConstraint.InequalityType.SmallerOrEqualTo)
-        };
-        var o = new Objective(new string[] { "v1", "v2" }, new rat[] { 1, 1 });
-        var ls = new LinearSolver(lcs, o);
-        ls.Solve();
+        // var lcs = new LinearConstraint[] {
+        // new LinearConstraint(new string[] {"v1", "v2"}, new rat[] {-5,4}, 0, LinearConstraint.InequalityType.SmallerOrEqualTo),
+        // new LinearConstraint(new string[] {"v1", "v2"}, new rat[] {5,2}, 15, LinearConstraint.InequalityType.SmallerOrEqualTo)
+        // };
+        // var o = new Objective(new string[] { "v1", "v2" }, new rat[] { 1, 1 });
+        // var ls = new LinearSolver(lcs, o);
+        // ls.Solve();
       }
     }
   }
@@ -475,15 +495,15 @@ namespace Aufgabe1.LinearProgramming
     }
 
     // Gomory Cut and reoptimize with dual method
-    public void Cut(int n)
+    public void Cut(int n, CancellationToken cancelToken)
     {
       if (!IsFeasibleSol())
       {
-        Debug.WriteLine("Error: Cut with non-feasible solution");
+        System.Diagnostics.Debug.WriteLine("Error: Cut with non-feasible solution");
         return;
       }
 
-      for (int count = 0; count < n; count++)
+      for (int count = 0; count < n && !cancelToken.IsCancellationRequested; count++)
       {
         int r = 1;
         while (Right[r].FractionPart == 0)
@@ -507,7 +527,7 @@ namespace Aufgabe1.LinearProgramming
           newLc.SetCoefficient(EntryVariableNames[col], Left[r][col].FractionPart * -1);
         }
         AddConstraint(newLc);
-        DualSolve();
+        DualSolve(cancelToken);
       }
     }
 
@@ -533,7 +553,7 @@ namespace Aufgabe1.LinearProgramming
 
     // Solve using dual 
     // bzw. transposed matrix
-    public void DualSolve()
+    public void DualSolve(CancellationToken cancelToken)
     {
       int GetMostNegativeRow()
       {
@@ -561,7 +581,7 @@ namespace Aufgabe1.LinearProgramming
         }
         for (int c = col + 1; c < Left[0].Count; c++)
         {
-          if (Left[r][c] < 0) 
+          if (Left[r][c] < 0)
           {
             if (!(Left[0][c] / Left[r][c] <= 0))
             {
@@ -575,7 +595,7 @@ namespace Aufgabe1.LinearProgramming
       }
 
       int row = GetMostNegativeRow();
-      while (row != -1)
+      while (row != -1 && !cancelToken.IsCancellationRequested)
       {
         int col = GetMinRatioCol(row);
         if (col == -1)
@@ -596,7 +616,6 @@ namespace Aufgabe1.LinearProgramming
         row = GetMostNegativeRow();
       }
 
-      // Solve();
       if (IsFeasibleSol()) SetAnswer();
       else
       {

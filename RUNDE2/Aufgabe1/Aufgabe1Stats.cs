@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using Aufgabe1.Debug;
 
 namespace Aufgabe1
 {
@@ -16,25 +17,25 @@ namespace Aufgabe1
       UsedTimeEachTR = new List<double>();
     }
 
-    public void StartNth(int n)
-    {
-      Stopwatch sw = new Stopwatch();
+    // public void StartNth(int n)
+    // {
+    //   Stopwatch sw = new Stopwatch();
 
-      for (int i = 0; i < n; i++)
-      {
-        RandomBlockGenerator rbg = new RandomBlockGenerator(FlohmarktManagement.START_TIME, FlohmarktManagement.END_TIME, MAXIMUM_HEIGHT, 15);
-        List<int[]> testData = rbg.GetResult();
+    //   for (int i = 0; i < n; i++)
+    //   {
+    //     RandomBlockGenerator rbg = new RandomBlockGenerator(FlohmarktManagement.START_TIME, FlohmarktManagement.END_TIME, MAXIMUM_HEIGHT, 15);
+    //     List<int[]> testData = rbg.GetResult();
 
-        sw.Start();
-        FlohmarktManagement.Solve(testData);
-        sw.Stop();
-        UsedTimeEachTR.Add(sw.ElapsedMilliseconds);
-        sw.Reset();
-        Console.WriteLine($"DP: {new BFFind(testData).GetMaximum()}");
+    //     sw.Start();
+    //     FlohmarktManagement.Solve(testData);
+    //     sw.Stop();
+    //     UsedTimeEachTR.Add(sw.ElapsedMilliseconds);
+    //     sw.Reset();
+    //     Console.WriteLine($"DP: {new BFFind(testData).GetMaximum()}");
 
-        Console.WriteLine("----------------");
-      }
-    }
+    //     Console.WriteLine("----------------");
+    //   }
+    // }
 
     // Cf. Commit bcdbef
     /*

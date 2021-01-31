@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace Aufgabe1
+namespace Aufgabe1.Debug
 {
   // DEBUG
   // DO NOT Submit this class
