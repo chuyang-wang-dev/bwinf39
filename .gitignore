@@ -2,6 +2,7 @@
 */.vs/*
 .vs/
 *.pdf
+*temp.*
 
 #Ignore the test cases
 */Test/

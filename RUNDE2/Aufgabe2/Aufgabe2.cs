@@ -203,6 +203,7 @@ namespace Aufgabe2
       }
 
       // Bubble sort
+      // Brings matrix to row echolon form
       public void Sort()
       {
         static void Swap(List<Row> arr, int i1, int i2)
@@ -368,11 +369,11 @@ namespace Aufgabe2
           Range(0, Count).
           Where(entry => Left[entry] != 0).
           Select(idx => entryToName[idx]).ToArray();
-        int[] schlange = Enumerable.
+        int[] schuesseln = Enumerable.
           Range(0, Count).
           Where(idx => Right[idx] != 0).
           Select(i => i + 1).ToArray();
-        return $"{string.Join(", ", obst)} => {string.Join(", ", schlange)}";
+        return $"{string.Join(", ", obst)} => {string.Join(", ", schuesseln)}";
       }
     }
 
