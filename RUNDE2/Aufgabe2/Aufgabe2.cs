@@ -44,8 +44,8 @@ namespace Aufgabe2
           Where(idx => !conflictIndex.Contains(idx)).
           Select(i => resultRowsWithConflict[i]).
           ToArray());
-        List<int> schlangeWithConflict = resC.GetRHSNonZeroEntries();
-        List<int> schlangeWithoutConflict = resO.GetRHSNonZeroEntries();
+        List<int> schuesselWithConflict = resC.GetRHSNonZeroEntries();
+        List<int> schuesselWithoutConflict = resO.GetRHSNonZeroEntries();
         #endregion
 
         #region OutPut
@@ -63,11 +63,11 @@ namespace Aufgabe2
         {
           Console.WriteLine("Keine eindeutige Antwort konnte gefunden werden: ");
           Console.WriteLine("Schuesseln, die besucht werden muessen, um ALLE gewuenschten Obst zu bekommen (aber moeglicherweise kann man auch weitere unerwuenschte Obstsorte bekommen): ");
-          Console.WriteLine(string.Join(",", schlangeWithConflict.Select(s => s + 1)));
+          Console.WriteLine(string.Join(",", schuesselWithConflict.Select(s => s + 1)));
           Console.WriteLine("");
           Console.WriteLine("Schuesseln, die besucht werden muessen, um NUR gewuenschte Obst zu bekommen (aber moeglicherweise kann man nicht alle gewuenschten Obstsorten bekommen): ");
         }
-        Console.WriteLine(string.Join(",", schlangeWithoutConflict.Select(s => s + 1)));
+        Console.WriteLine(string.Join(",", schuesselWithoutConflict.Select(s => s + 1)));
 
         Console.WriteLine("\r\n----------------");
         Console.WriteLine("Weitere Einzelheiten: ");
