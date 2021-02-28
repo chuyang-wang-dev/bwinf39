@@ -3,6 +3,10 @@
 .vs/
 *.pdf
 *temp.*
+*.bat
+*.html
+
+svg-inkscape/
 
 #Ignore the test cases
 */Test/
@@ -337,3 +341,5 @@ TSWLatexianTemp*
 !*/Einsendung/*/*
 !*/Einsendung/*/*/*
 !*/Einsendung/*/*/*.txt
+
+!**/assets/*

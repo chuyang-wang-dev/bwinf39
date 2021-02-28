@@ -12,39 +12,56 @@ namespace Aufgabe2
       Console.OutputEncoding = System.Text.Encoding.UTF8;
 
       Tuple<bool, int, string[], Dictionary<string, int>, string[], Matrix> data = ReadInput();
+      // Falls das Einlesen von Daten erfolgreich ist
       if (data.Item1)
       {
         Matrix matrix = data.Item6;
         matrix.Sort();
         matrix.EliminateAll();
 
-        #region  Format Data to be readable
+        #region  Analysiere Data
+        // Spalte (Obstsorte), die von der Aufgabe gefragt sind
         int[] entriesToFind = data.Item3.Select(s => data.Item4[s]).ToArray();
-        List<int> conflictIndex = new List<int>();
         List<Row> resultRowsWithConflict = new List<Row>();
+        // Bezieht sich auf resultRowsWithConflict
+        // Speichert den Index, falls diese Zeile nicht nur Wunschsorten,
+        // Sondern auch andere nicht gewuenschte Sorten enthalten
+        List<int> conflictIndex = new List<int>();
         for (int i = 0; i < entriesToFind.Length; i++)
         {
-          if (!resultRowsWithConflict.Any(e => e.Left[entriesToFind[i]] != 0))
+          // Um Duplikate zu vermeiden
+          if (resultRowsWithConflict.All(e => e.Left[entriesToFind[i]] == 0))
           {
-            resultRowsWithConflict.Add(matrix.FindRow(entriesToFind[i]));
+            // Speichert die Zeile, in denen 
+            // das Element in dieser Spalte nicht null ist
+            resultRowsWithConflict.Add(matrix.FindNonZeroRow(entriesToFind[i]));
+            // Testet, ob diese Zeile nicht gewuenschte Obstsorte enthaelt
             for (int j = 0; j < resultRowsWithConflict[^1].Count; j++)
             {
               if (resultRowsWithConflict[^1].Left[j] != 0 && !entriesToFind.Contains(j))
               {
                 conflictIndex.Add(resultRowsWithConflict.Count - 1);
+                // Eine Nicht-Uebereinstimmung reicht
                 break;
               }
             }
           }
         }
 
+        // ResC enthaelt auch nicht-gewuenschte Obstsorten
         Row resC = Row.Condense(resultRowsWithConflict.ToArray());
+        // ResO enthaelt nur Wunschsorten
+        // Jedoch koennte es sein, 
+        // dass nicht alle Wunschsorten vorhanden sind
         Row resO = Row.Condense(Enumerable.
           Range(0, resultRowsWithConflict.Count).
+          // wo dieser Index nicht in conflictIndex vorhanden ist
           Where(idx => !conflictIndex.Contains(idx)).
           Select(i => resultRowsWithConflict[i]).
           ToArray());
+        // Schuesseln von ResC
         List<int> schuesselWithConflict = resC.GetRHSNonZeroEntries();
+        // Schuesseln von ResO
         List<int> schuesselWithoutConflict = resO.GetRHSNonZeroEntries();
         #endregion
 
@@ -88,7 +105,15 @@ namespace Aufgabe2
       Console.ReadKey();
     }
 
-    // IsSuccess, obstCount, toFind, nameToEntry, entryToName, data
+    // Fordert den Nutzer auf, einen Dateinamen einzugeben, liest diese,
+    // und parst in eine Matrix
+    // RETURN: 
+    // bool Item1 - ob die Datei erfolgreich eingelesen ist
+    // int Item2 - Anzahl der verfuegbaren Obstsorten 
+    // string[] Item3 - Wunschsorten
+    // Dictionary<string, int> Item4 
+    // string[] Item5 
+    // Matrix Item6 - Matrix wie in Loesungsidee beschrieben
     private static Tuple<bool, int, string[], Dictionary<string, int>, string[], Matrix> ReadInput()
     {
       Console.WriteLine("Bitte Name der Test-Datei eingeben...");
@@ -126,7 +151,7 @@ namespace Aufgabe2
             }
             rows[i] = new Row(new Vector(LHS), new Vector(RHS));
           }
-          // Add implied information
+          // implizierte Zeile (mit 1s)
           rows[^1] = new Row(new Vector(Enumerable.Range(0, obstCount).Select(_ => (sbyte)1)), new Vector(Enumerable.Range(0, obstCount).Select(_ => (sbyte)1)));
           Matrix data = new Matrix(rows);
           for (int j = 0; j < toFind.Length; j++)
@@ -144,7 +169,6 @@ namespace Aufgabe2
     }
 
 
-
     private class Matrix
     {
       private List<Row> rows;
@@ -155,45 +179,53 @@ namespace Aufgabe2
         this.rows.AddRange(rows);
       }
 
+      // Loest die Matrix
+      // O(n^3)
       public void EliminateAll()
       {
-        for (int i = 0; i < rows[0].Count; i++)
-        {
-          Eliminate(i);
-        }
+        for (int i = 0; i < rows[0].Count; i++) // O(n)
+          Eliminate(i); // O(n^2*n) = O(n^3)
       }
 
+      // Versucht, ein Pivotelement in dieser Spalte zu finden
+      // Erfolgt es, wird alle andere Elemente eliminiert
+      // Sonst return
+      // O(n^2)
       public void Eliminate(int col)
       {
-        bool isUnique = true;
-        int pivotRow = FindPivotRow(col);
+        int pivotRow = FindPivotRow(col); // O(n)
         if (pivotRow == -1)
         {
           return;
         }
-        for (int r = 0; r < rows.Count; r++)
+
+        bool isUnique = true;
+        for (int r = 0; r < rows.Count; r++) // O(n)
         {
           if (r == pivotRow) continue;
           if (rows[r].Left[col] != 0)
           {
-            rows[r].SubtractFrom(rows[pivotRow]);
+            // Eliminiert andere Elemente dieser Spalte
+            rows[r].SubtractFrom(rows[pivotRow]); // O(n)
             isUnique = false;
           }
-        }
+        } // O(n^2)
+
         if (!isUnique)
         {
           List<Row> rs = new List<Row>();
-          for (int i = 0; i < rows.Count; i++)
+          for (int i = 0; i < rows.Count; i++) // O(n)
           {
-            rs.AddRange(Row.Extract(rows[i]));
-          }
+            rs.AddRange(Row.Extract(rows[i])); // O(n)
+          } // O(n^2)
           rows = rs;
-          Distinct();
-          Sort();
+          Distinct(); // O(nlogn)
+          Sort(); // O(n^2)
         }
       }
 
-      // Make list distinct AND remove 0:0 row
+      // Entfernt Duplikate und die Null-Zeile
+      // O(nlogn)
       public void Distinct()
       {
         rows = rows.Where(e => !e.IsZero).
@@ -203,7 +235,8 @@ namespace Aufgabe2
       }
 
       // Bubble sort
-      // Brings matrix to row echolon form
+      // Sortiert nach Anzahl von Nulls jeder Zeile
+      // O(n^2)
       public void Sort()
       {
         static void Swap(List<Row> arr, int i1, int i2)
@@ -222,21 +255,30 @@ namespace Aufgabe2
         }
       }
 
+      // Versucht, das Pivotelement dieser Spalte zu finden
+      // Die Pivotzeile wird zurueckgegeben
+      // Falls es nicht moeglich ist, dann gib -1 zurueck
+      // O(n)
       private int FindPivotRow(int col)
       {
         for (int i = 0; i < rows.Count; i++)
         {
-          if (rows[i].Left[col] != 0 && rows[i].Left.LeadingZeros == col) return i;
+          if (rows[i].Left[col] != 0 && rows[i].Left.LeadingZeros == col)
+            return i;
         }
         return -1;
       }
 
-      public Row FindRow(int colEntry)
+      // Nachdem die Matrix bereits in reduzierte ZSF ist
+      // Findet das Element dieser Spalte, welches nicht null ist
+      // RETURN:
+      // Die ganze Zeile dieses Elements
+      public Row FindNonZeroRow(int col)
       {
-        if (colEntry < 0 || colEntry >= rows[0].Left.Count) throw new ArgumentException(nameof(colEntry));
+        if (col < 0 || col >= rows[0].Left.Count) throw new ArgumentException(nameof(col));
         for (int i = 0; i < rows.Count; i++)
         {
-          if (rows[i].Left[colEntry] != 0) return rows[i];
+          if (rows[i].Left[col] != 0) return rows[i];
         }
         throw new Exception("Should not happen. At Matrix.FindRow");
       }
@@ -256,6 +298,7 @@ namespace Aufgabe2
       public Vector Left { get => left; }
       public Vector Right { get => right; }
       public int Count { get => left.Count; }
+      // True falls alle Elemente dieser Zeile sind null
       public bool IsZero
       {
         get
@@ -280,12 +323,21 @@ namespace Aufgabe2
         return left.LeadingZeros;
       }
 
+      // Die jetzige Zeile (Minuend) wird von der gegebene Zeile (Subtrahenden) subtrahiert
+      // Die Differenz wird der neue Wert des jetzigen Objekts
       public void SubtractFrom(Row r)
       {
         left.SubtractFrom(r.Left);
         right.SubtractFrom(r.Right);
       }
 
+      // Teilt die gegebene Zeile in positive und negative Zeilen
+      // Die negative Zeile wird zu positiv umgewandelt
+      // indem *-1 durchgefuehrt wird
+      // BSP: Eingabe: {1,0,0,-1,1} => {0,1,1,0,-1}
+      //      Ausgabe: [{1,0,0,0,1} => {0,1,1,0,0}, 
+      //                {0,0,0,1,0} => {0,0,0,0,1}]              
+      // O(n)
       public static Row[] Extract(Row r)
       {
         sbyte[] leftPos, leftNeg, rightPos, rightNeg;
@@ -293,7 +345,7 @@ namespace Aufgabe2
         leftNeg = new sbyte[r.Left.Count];
         rightPos = new sbyte[r.Left.Count];
         rightNeg = new sbyte[r.Left.Count];
-        for (int i = 0; i < r.Left.Count; i++)
+        for (int i = 0; i < r.Left.Count; i++) // O(n)
         {
           if (r.Left[i] > 0)
           {
@@ -334,6 +386,7 @@ namespace Aufgabe2
         return new Row[] { new Row(new Vector(leftPos), new Vector(rightPos)), new Row(new Vector(leftNeg), new Vector(rightNeg)) };
       }
 
+      // Fuegt alle Zeilen zu einer Einzelnen
       public static Row Condense(Row[] rows)
       {
         if (rows.Length == 0) throw new ArgumentException(nameof(rows));
@@ -358,11 +411,8 @@ namespace Aufgabe2
         return rtr;
       }
 
-      public override string ToString()
-      {
-        return $"{{ {left} => {right} }}";
-      }
-
+      // Parameter:
+      // string[] entryToName - Das entspricht Item5 aus ReadInput()
       public string ToReadableFormat(string[] entryToName)
       {
         string[] obst = Enumerable.
@@ -374,6 +424,11 @@ namespace Aufgabe2
           Where(idx => Right[idx] != 0).
           Select(i => i + 1).ToArray();
         return $"{string.Join(", ", obst)} => {string.Join(", ", schuesseln)}";
+      }
+
+      public override string ToString()
+      {
+        return $"{{ {left} => {right} }}";
       }
     }
 
@@ -424,6 +479,7 @@ namespace Aufgabe2
         }
       }
 
+      // O(n)
       public void SubtractFrom(Vector v)
       {
         for (int i = 0; i < data.Length; i++)
