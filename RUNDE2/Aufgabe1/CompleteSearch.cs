@@ -2,7 +2,9 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
-using Aufgabe1.LinearProgramming;
+
+using rat = Rationals.Rational;
+using System.Diagnostics;
 
 namespace Aufgabe1
 {
@@ -20,6 +22,8 @@ namespace Aufgabe1
 
     public int DEBUG_changedCount = 0;
     public int DEBUG_pruningCount = 0;
+    private readonly Stopwatch sw = new Stopwatch();
+    private const int DEBUG_TIMEOUT = 6000;
 
     public CompleteSearch(List<int[]> demands)
     {
@@ -43,19 +47,36 @@ namespace Aufgabe1
         }
         currentMap[c] = cCount;
       }
-
-      highestValPossible = CalcMaximumProfit();
+      highestValPossible = CalcCurrentMaximumProfit();
     }
 
+    public Dictionary<string, rat> GetResult()
+    {
+      if (null == BestCombination) throw new InvalidOperationException("Data is not processed yet. ");
+      return Enumerable.
+        Range(0, demands.Count).
+        ToDictionary(
+        idx => $"x{idx}",
+        idx => BestCombination.Exists(item => item[3] == idx) ? 1 : (rat)0);
+    }
+
+    /// Obsolete
     public void PrintResult()
     {
       if (BestCombination != null)
       {
-        Console.WriteLine("Die beste Auswahl ist (Hier werden die betroffenen Anbieter gezeigt wie das Format der Eingabe): ");
-        foreach (int[] item in BestCombination) Console.WriteLine(
-          string.Join(" ", Enumerable.
-            Range(0, 3).
-            Select(i => item[i])));
+        Console.WriteLine("Die beste Auswahl ist: ");
+        for (int i = 0; i < demands.Count; i++)
+        {
+          if (BestCombination.Exists(item => item[3] == i))
+          {
+            Console.WriteLine($"x{i}: 1");
+          }
+          else
+          {
+            Console.WriteLine($"x{i}: 0");
+          }
+        }
         Console.WriteLine("-------------------");
         Console.WriteLine("Zusammenfassung: ");
         Console.WriteLine($"Diese Auswahl besteht aus {BestCombination.Count} Anbietern. ");
@@ -66,23 +87,27 @@ namespace Aufgabe1
 
     public void Process(CancellationToken cancelToken)
     {
-      if (demands.Count < 50) {
+      sw.Start();
+      if (demands.Count < 50)
+      {
         ProcessFromZero(cancelToken);
         return;
       }
 
       BestCombination = null;
 
-      for (int i = highestValPossible - 1; i > 0; i -= (int)Math.Ceiling(100d / (double)demands.Count))
+      for (int i = highestValPossible - 1; i > 0; i--)
       {
         HighestProfit = i;
-        RecRemove(FindFirstConflictCol(0), cancelToken);
+        RecRemove(0, FindFirstConflictCol(0), cancelToken);
 
-        if (BestCombination != null) {
+        if (BestCombination != null)
+        {
           IsCompleted = true;
           break;
         }
-        else if (cancelToken.IsCancellationRequested) {
+        else if (cancelToken.IsCancellationRequested)
+        {
           IsCompleted = false;
           HighestProfit = 0;
           break;
@@ -90,51 +115,83 @@ namespace Aufgabe1
       }
     }
 
-    public void ProcessFromZero(CancellationToken cancelToken) {
+    public void ProcessFromZero(CancellationToken cancelToken)
+    {
       IsCompleted = true;
       HighestProfit = 0;
-      RecRemove(FindFirstConflictCol(0), cancelToken);
+      RecRemove(0, FindFirstConflictCol(0), cancelToken);
     }
 
-    private void RecRemove(Tuple<int, List<int[]>> firstConflict, CancellationToken cancelToken)
+    private void RecRemove(int startIndex, Tuple<int, List<int[]>> conflicts, CancellationToken cancelToken)
     {
-      if (cancelToken.IsCancellationRequested)
+      // Falls es am Anfang die Bedingungen bereits erfuellt
+      // i. e. flohmarkt6.txt und flohmarkt7.txt
+      if (conflicts.Item1 == -1)
       {
-        Restore();
-        IsCompleted = false;
-        return;
-      }
-
-      int max = CalcMaximumProfit();
-      // If smaller or equal the current highest, do pruning
-      if (max <= HighestProfit)
-      {
-        // Pop the last deleted obj and set it to avaliable
-        Restore();
-        DEBUG_pruningCount++;
-        return;
-      }
-
-      // If compatible at this stage
-      if (firstConflict.Item1 < 0)
-      {
-        // Update highest profit
-        HighestProfit = max;
+        HighestProfit = CalcCurrentMaximumProfit();
         BestCombination = GetCurrentCombination();
-
-        // Pop the last deleted obj and set it to avaliable
-        Restore();
-        DEBUG_changedCount++;
         return;
       }
-
-      foreach (int[] conflictObj in firstConflict.Item2)
+      for (int i = startIndex; i < conflicts.Item2.Count; i++)
       {
+        if (cancelToken.IsCancellationRequested)
+        {
+          Restore();
+          IsCompleted = false;
+          break;
+        }
+
+        if (sw.ElapsedMilliseconds > DEBUG_TIMEOUT)
+        {
+          Restore();
+          break;
+        }
+
         if (HighestProfit == highestValPossible) return;
-        int conflictIndex = demands.FindIndex(item => item[3] == conflictObj[3]);
+        int conflictIndex = demands.FindIndex(item => item[3] == conflicts.Item2[i][3]);
         Delete(conflictIndex);
 
-        RecRemove(FindFirstConflictCol(firstConflict.Item1), cancelToken);
+        int max = CalcCurrentMaximumProfit();
+        // If smaller or equal the current highest, do pruning
+        if (max <= HighestProfit)
+        {
+          // Pop the last deleted obj and set it to avaliable
+          Restore();
+          DEBUG_pruningCount++;
+          continue;
+        }
+
+        int nextCol = -1;
+        for (int c = conflicts.Item1; c < FlohmarktManagement.INTERVAL_LENGTH; c++)
+        {
+          if (currentMap[c] > FlohmarktManagement.HEIGHT)
+          {
+            nextCol = c;
+            break;
+          }
+        }
+        // If compatible at this stage
+        if (nextCol == -1)
+        {
+          // Update highest profit
+          HighestProfit = max;
+          BestCombination = GetCurrentCombination();
+
+          sw.Restart();
+
+          // Pop the last deleted obj and set it to avaliable
+          Restore();
+          DEBUG_changedCount++;
+          // return;
+        }
+        else if (nextCol != conflicts.Item1)
+        {
+          RecRemove(0, FindFirstConflictCol(nextCol), cancelToken);
+        }
+        else
+        {
+          RecRemove(i + 1, conflicts, cancelToken);
+        }
       }
       Restore();
     }
@@ -181,7 +238,7 @@ namespace Aufgabe1
       return new Tuple<int, List<int[]>>(-1, null);
     }
 
-    private int CalcMaximumProfit()
+    private int CalcCurrentMaximumProfit()
     {
       int count = 0;
       for (int i = 0; i < FlohmarktManagement.INTERVAL_LENGTH; i++)

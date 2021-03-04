@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using rat = Rationals.Rational;
-using Aufgabe1.DataStructure;
-using Google.OrTools.LinearSolver;
-using System.Diagnostics;
 using System.IO;
 using System.Threading;
+
+using Aufgabe1.DataStructure;
+using rat = Rationals.Rational;
+
+using Google.OrTools.LinearSolver;
+
 
 namespace Aufgabe1.LinearProgramming
 {
@@ -20,7 +22,6 @@ namespace Aufgabe1.LinearProgramming
     public Dictionary<string, rat> BestSolution { get; private set; }
     public Dictionary<string, rat> CurrentSolution { get; private set; }
     public bool IsCompleted { get; private set; }
-
 
     public LinearSolver(LinearConstraint[] LCs, Objective objective)
     {
@@ -39,10 +40,14 @@ namespace Aufgabe1.LinearProgramming
         SolveOne(toSearch.Pop(), cancelToken);
         if (cancelToken.IsCancellationRequested)
         {
+          IsCompleted = false;
           return;
         }
       }
-      IsCompleted = true;
+      if (cancelToken.IsCancellationRequested)
+        IsCompleted = false;
+      else
+        IsCompleted = true;
     }
 
     private void SolveOne(ConstraintWithMax c, CancellationToken cancelToken)
@@ -92,6 +97,66 @@ namespace Aufgabe1.LinearProgramming
       }
     }
 
+    // Loesen des ILP mithilfe von SCIP integiert
+    // in Google OrTools
+    public static Dictionary<string, rat> GoogleSolve(List<int[]> data)
+    {
+      static int[] GetItemsInCol(int c, List<int[]> data)
+      {
+        return Enumerable.Range(0, data.Count).
+          Where(idx => data[idx][0] <= c + FlohmarktManagement.START_TIME && data[idx][1] > c + FlohmarktManagement.START_TIME).
+          ToArray();
+      }
+
+      // Google Solver
+      Solver solver = Solver.CreateSolver("SCIP");
+
+      // legt Xn Variablen an
+      List<Variable> Xn = new List<Variable>();
+      for (int i = 0; i < data.Count; i++)
+      {
+        Xn.Add(solver.MakeIntVar(0, 1, $"X{i}"));
+      }
+
+      // Constraints
+      List<Constraint> constraintsG = new List<Constraint>();
+      for (int i = 0; i < FlohmarktManagement.INTERVAL_LENGTH; i++)
+      {
+        var c = solver.MakeConstraint(0, FlohmarktManagement.HEIGHT, $"Ccol{i}");
+        var colItems = GetItemsInCol(i, data);
+        foreach (var item in colItems)
+        {
+          c.SetCoefficient(Xn[item], data[item][2]);
+        }
+        constraintsG.Add(c);
+      }
+
+      // legt die Objektive
+      var objective = solver.Objective();
+      for (int i = 0; i < data.Count; i++)
+      {
+        objective.SetCoefficient(Xn[i], data[i].GetSize());
+      }
+      objective.SetMaximization();
+
+      // Falls eine optimale Loesung gefunden wird
+      Dictionary<string, rat> result = new Dictionary<string, rat>();
+      if (solver.Solve() == Solver.ResultStatus.OPTIMAL)
+      {
+        for (int i = 0; i < Xn.Count; i++)
+        {
+          result.Add($"x{i}", rat.Approximate(Xn[i].SolutionValue(), tolerance: 0.001d));
+        }
+        result.Add($"P", rat.Approximate(solver.Objective().Value(), tolerance: 0.001d));
+        return result;
+      }
+      else
+      {
+        System.Console.WriteLine("SCIP Solver hat einen unerwarteten Fehler. Falls es erneut auftreten, setzen Sie --use-goole=false");
+        throw new Exception("LinearProgramming.LinearSolver.GoogleSolve");
+      }
+    }
+
     private class ConstraintWithMax : IComparable<ConstraintWithMax>
     {
       public rat Upperbound { get; }
@@ -105,7 +170,7 @@ namespace Aufgabe1.LinearProgramming
         Simplex s = new Simplex(LCs, obj);
         s.Solve();
         if (s.Result == Simplex.ResultType.NO_FEASIBLE_SOL) throw new Exception();
-        s.Cut(10, cancelToken);
+        s.Cut(100, cancelToken);
         Answer = s.Answer;
         Tableau = s;
         rat maximalVal = s.Answer[obj.LHSVariableNames[0]];
@@ -173,55 +238,6 @@ namespace Aufgabe1.LinearProgramming
 
     public static class Tester
     {
-      public static void GoogleSolve(List<int[]> data)
-      {
-        static int[] GetItemsInCol(int c, List<int[]> data)
-        {
-          return Enumerable.Range(0, data.Count).
-            Where(idx => data[idx][0] <= c + FlohmarktManagement.START_TIME && data[idx][1] > c + FlohmarktManagement.START_TIME).
-            ToArray();
-        }
-
-        // Google Solver
-        Solver solver = Solver.CreateSolver("SCIP");
-
-        // Initialize Xn Variablen
-        List<Variable> Xn = new List<Variable>();
-        for (int i = 0; i < data.Count; i++)
-        {
-          Xn.Add(solver.MakeIntVar(0, 1, $"X{i}"));
-        }
-
-        // Constraints
-        List<Constraint> constraintsG = new List<Constraint>();
-        for (int i = 0; i < FlohmarktManagement.INTERVAL_LENGTH; i++)
-        {
-          var c = solver.MakeConstraint(0, FlohmarktManagement.HEIGHT, $"Ccol{i}");
-          var colItems = GetItemsInCol(i, data);
-          foreach (var item in colItems)
-          {
-            c.SetCoefficient(Xn[item], data[item][2]);
-          }
-          constraintsG.Add(c);
-        }
-
-        var objective = solver.Objective();
-        for (int i = 0; i < data.Count; i++)
-        {
-          objective.SetCoefficient(Xn[i], data[i].GetSize());
-        }
-        objective.SetMaximization();
-
-        if (solver.Solve() == Solver.ResultStatus.OPTIMAL)
-        {
-          for (int i = 0; i < Xn.Count; i++)
-          {
-            System.Console.WriteLine($"X{i}: " + Xn[i].SolutionValue());
-          }
-          System.Console.WriteLine(solver.Objective().Value());
-        }
-      }
-
       public static void Test()
       {
         //   Solver solver = Solver.CreateSolver("SCIP");
@@ -266,7 +282,7 @@ namespace Aufgabe1.LinearProgramming
   public class Simplex
   {
     public const int M = 100000;
-    public const int CUT_D_LIMIT = 300;
+    public const int CUT_D_LIMIT = 30;
     public ResultType Result { get; private set; }
     public Dictionary<string, rat> Answer { get; private set; }
     private static readonly Random rnd = new Random();
