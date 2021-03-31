@@ -4,19 +4,54 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+
+using Aufgabe1.Drawing;
 using Aufgabe1.LinearProgramming;
+
 using rat = Rationals.Rational;
 
 namespace Aufgabe1
 {
   public class FlohmarktManagement
   {
-    public const int HEIGHT = 1000;
+    public const int HEIGHT = 6;
     public const int START_TIME = 8;
-    public const int END_TIME = 18;
+    public const int END_TIME = 12;
     public const int INTERVAL_LENGTH = END_TIME - START_TIME;
     public static void Main(string[] args)
     {
+      // List<int[]> data = new List<int[]> {
+      //   new int[] {8,9,1,0}, 
+      //   new int[] {8,9,3,1}, 
+      //   new int[] {8,9,2,2}, 
+      //   new int[] {9,10,2,3}, 
+      //   new int[] {9,10,3,4}, 
+      //   new int[] {10,11,2,5}, 
+      //   new int[] {10,11,3,6}, 
+      //   new int[] {10,12,1,7}, 
+      //   new int[] {11,12,1,8}, 
+      //   new int[] {11,12,1,9}, 
+      //   new int[] {11,12,1,10}, 
+      //   new int[] {11,12,2,11}, 
+      // };
+
+      for (int i = 0; i < 50; i++)
+      {
+        var data = new Debug.RandomBlockGenerator(8, 12, 3, 20).GetResult();
+        Dictionary<string, rat> r = LinearSolver.GoogleSolve(data);
+        PrintResult(r);
+        Painter.Paint("", r, data);
+      }
+
+
+
+
+
+
+
+
+
+
       var arg = ParseArgs(args);
       Stopwatch sw = new Stopwatch();
       Tuple<bool, int, List<int[]>> input = ReadInput();
@@ -24,45 +59,70 @@ namespace Aufgabe1
       {
         var cToken = new CancellationTokenSource();
         var sToken = new CancellationTokenSource();
-        CompleteSearch c = new CompleteSearch(input.Item3);
+
+        // selbst implementierte Simplex Methode 
         Tuple<bool, Dictionary<string, rat>> res = new Tuple<bool, Dictionary<string, rat>>(false, null);
-        var searchThread = new Thread(() => c.Process(cToken.Token));
         var simplexThread = new Thread(() => res = Solve(input.Item3, sToken.Token));
-        searchThread.Start();
-        simplexThread.Start();
-        sw.Start();
-        while (searchThread.IsAlive && simplexThread.IsAlive)
+
+        CompleteSearch c = new CompleteSearch(input.Item3);
+        var searchThread = new Thread(() => c.Process(cToken.Token));
+
+        // Falls OrTools nicht explizit erlaubt ist
+        // Kombination von CompleteSearch und Simplex
+        if (!arg.UseGoogle)
         {
-          Thread.Sleep(100);
-          if (sw.ElapsedMilliseconds > arg.TimeLimit)
+          simplexThread.Start();
+          // Falls durch Kommando-Zeile-Argumente 
+          // CompleteSearch nicht explizit verboten wird
+          if (!arg.ForceSimplex)
           {
-            cToken.Cancel();
-            sToken.Cancel();
-            sw.Stop();
-            while (searchThread.IsAlive || simplexThread.IsAlive)
-              Thread.Sleep(300);
-            System.Console.WriteLine($"TIME LIMIT EXCEEDED: {sw.ElapsedMilliseconds}ms");
-            if (res.Item2["P"] > c.HighestProfit)
+            searchThread.Start();
+          }
+          // Messen von Zeit
+          sw.Start();
+          while ((arg.ForceSimplex || searchThread.IsAlive) && simplexThread.IsAlive)
+          {
+            Thread.Sleep(100);
+            if (sw.ElapsedMilliseconds > arg.TimeLimit)
             {
-              // TODO
-              System.Console.WriteLine(res.Item2["P"]);
-            }
-            else
-            {
-              // TODO
-              System.Console.WriteLine(c.HighestProfit);
+              cToken.Cancel();
+              sToken.Cancel();
+              sw.Stop();
+              // Warten auf die Threads aufzuhoeren
+              while ((!arg.ForceSimplex && searchThread.IsAlive) || simplexThread.IsAlive)
+                Thread.Sleep(300);
+              System.Console.WriteLine($"TIME LIMIT EXCEEDED: {sw.ElapsedMilliseconds}ms");
+              if (res.Item2["P"] > c.HighestProfit)
+              {
+                // TODO
+                System.Console.WriteLine(res.Item2["P"]);
+              }
+              else
+              {
+                // TODO AUSGABE
+                System.Console.WriteLine(c.HighestProfit);
+              }
             }
           }
+          if (!arg.ForceSimplex && c.IsCompleted)
+          {
+            c.PrintResult();
+            sToken.Cancel();
+          }
+          else if (res.Item1)
+          {
+            cToken.Cancel();
+            PrintResult(res.Item2);
+          }
+
         }
-        if (c.IsCompleted)
+        // Falls Google Solver durch KommandoZeile-Argumente
+        // explizit erlaubt wurde
+        else
         {
-          c.PrintResult();
-          sToken.Cancel();
-        }
-        else if (res.Item1)
-        {
-          cToken.Cancel();
-          System.Console.WriteLine(string.Join("\r\n", res.Item2.Select(kvp => kvp.Key + ": " + kvp.Value)));
+          Dictionary<string, rat> result = LinearSolver.GoogleSolve(input.Item3);
+          PrintResult(result);
+          Painter.Paint("", result, input.Item3);
         }
       }
       else
@@ -78,7 +138,6 @@ namespace Aufgabe1
       int timeLimit = Int32.MaxValue;
       bool g = false;
       bool simplex = false;
-      bool cs = false;
       foreach (var arg in args)
       {
         string[] keyAndValue = arg.Trim().Split('=');
@@ -102,44 +161,34 @@ namespace Aufgabe1
               System.Console.WriteLine($"Gegebener Wert fuer das Kommandozeilen-Argument '{keyAndValue[0]}' ist nicht gueltig. Vergleich Dokumentation. ");
             }
             break;
-          case "--force-complete-search":
-            if (!bool.TryParse(keyAndValue[1], out cs))
-            {
-              System.Console.WriteLine($"Gegebener Wert fuer das Kommandozeilen-Argument '{keyAndValue[0]}' ist nicht gueltig. Vergleich Dokumentation. ");
-            }
-            break;
           default:
             System.Console.WriteLine($"Gegebene Kommandozeilen-Argument '{keyAndValue[0]}' ist nicht gueltig. Vergleich Dokumentation. ");
             break;
         }
       }
-      return new CommandLineOptions(timeLimit, g, simplex, cs);
+      return new CommandLineOptions(timeLimit, g, simplex);
     }
 
     private readonly struct CommandLineOptions
     {
       public CommandLineOptions(int timeLimit = Int32.MaxValue,
                                 bool useGoogle = false,
-                                bool forceSimplex = false,
-                                bool forceCS = false)
+                                bool forceSimplex = false)
       {
         TimeLimit = timeLimit;
         UseGoogle = useGoogle;
         ForceSimplex = forceSimplex;
-        ForceCompleteSearch = forceCS;
       }
 
       public readonly int TimeLimit { get; }
       public readonly bool UseGoogle { get; }
       public readonly bool ForceSimplex { get; }
-      public readonly bool ForceCompleteSearch { get; }
 
       public override string ToString()
       {
         return $@"--time-limit={TimeLimit} 
         --use-google={UseGoogle} 
-        --force-simplex={ForceSimplex} 
-        --force-complete-search={ForceCompleteSearch}";
+        --force-simplex={ForceSimplex}";
       }
     }
 
@@ -170,10 +219,22 @@ namespace Aufgabe1
       else return new Tuple<bool, int, List<int[]>>(false, -1, null);
     }
 
+    private static void PrintResult(Dictionary<string, rat> result)
+    {
+      Console.WriteLine("Die beste Auswahl ist: ");
+      foreach (var kvp in result)
+      {
+        if (kvp.Key == "P") continue;
+        System.Console.WriteLine($"{kvp.Key}: {kvp.Value}");
+      }
+      Console.WriteLine("-------------------");
+      Console.WriteLine("Zusammenfassung: ");
+      Console.WriteLine($"Diese Auswahl besteht aus {result.Where(kvp => kvp.Value == 1).Count()} Anbietern. ");
+      Console.WriteLine($"Die Mieteinnahme betraegt {result["P"]} Euro. ");
+    }
+
     public static Tuple<bool, Dictionary<string, rat>> Solve(List<int[]> data, CancellationToken cancelToken)
     {
-      LinearSolver.Tester.GoogleSolve(data);
-
       var res = GetConstraints(data);
       var linearSolver = new LinearSolver(res.Item1, res.Item2);
       linearSolver.Solve(cancelToken);

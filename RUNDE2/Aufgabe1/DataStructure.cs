@@ -89,4 +89,62 @@ namespace Aufgabe1.DataStructure
       heapLst.Add(default);
     }
   }
+
+
+  public class UnionFind
+  {
+    private readonly int[] ids;
+    private readonly int[] size;
+
+    public UnionFind(int N)
+    {
+      ids = new int[N];
+      size = new int[N];
+
+      for (int i = 0; i < N; i++)
+      {
+        ids[i] = i;
+        size[i] = 1;
+      }
+    }
+
+    public int Find(int id)
+    {
+      int root = ids[id];
+      if (id == root)
+        return root;
+      root = Find(root);
+      ids[id] = root;
+      return root;
+    }
+
+    public bool IsConnected(int id1, int id2)
+    {
+      return Find(id1) == Find(id2);
+    }
+
+    public void Union(int id1, int id2)
+    {
+      int r1 = Find(id1);
+      int r2 = Find(id2);
+      if (r1 == r2)
+        return;
+
+      if (size[r1] > size[r2])
+      {
+        ids[r2] = r1;
+        size[r1] += size[r2];
+      }
+      else
+      {
+        ids[r1] = r2;
+        size[r2] += size[r1];
+      }
+    }
+
+    public static int GetIndexByRowAndCol(int row, int col)
+    {
+      return FlohmarktManagement.INTERVAL_LENGTH * row - FlohmarktManagement.HEIGHT + col - 1;
+    }
+  }
 }
