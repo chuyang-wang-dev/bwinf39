@@ -4,6 +4,7 @@ using System.Collections.Generic;
 namespace Aufgabe1.DataStructure
 {
   // System.Collection.Generic.SortedSet hat irgendwie doch nicht funktioniert
+  // Ganz normale Implementierung von Heap, gibt's nichts zum Kommentieren
   public class Heap<E> where E : IComparable<E>
   {
     private readonly List<E> heapLst;

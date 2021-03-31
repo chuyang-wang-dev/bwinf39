@@ -4,26 +4,46 @@ using System.Collections.Generic;
 using System.Threading;
 
 using rat = Rationals.Rational;
-using System.Diagnostics;
 
 namespace Aufgabe1
 {
+  // Vollstaendige Suche mit Backtracking
+  // Hier wird das Problem als ein groesses Rechteck
+  // mit eine Hoehe von 10 und eine Breite von 1000
+  // in den man viele kleine Rechtecke einsetzt, 
+  // abstrahiert. Vgl. Dokumentation
   public class CompleteSearch
   {
+    // Speichert die Data aller Anbieter
     private readonly List<int[]> demands;
+    // Der Index dieses Arrays entspricht dem von demands
+    // speichert, ob der Anbieter dieses Indexs 
+    // 'logisch' geloescht oder nicht
     private readonly bool[] avaliable;
+    // Speichert die Index von Anbietern, die 'logisch' geloescht sind
+    // Sie sind immer noch in demands, jedoch sind 
+    // ihre avaliabe[i] zu false gesetzt worden
     private readonly Stack<int> currentDeleted;
+    // Ein Array mit der Laenge von die Zeitspannen
+    // In diesem Fall FlohmarktManagement.HEIGHT, i.e. 10 (8-18 Uhr)
+    // In dem Array wird gespeichert, wie viele Plaetze 
+    // in dieser Zeitspanne verwendet worden sind
     private readonly int[] currentMap;
+    // Hoechstmoeglicher Gewinn 
     private readonly int highestValPossible;
+    // Beste Auswahl
     public List<int[]> BestCombination { get; private set; }
+    // Der Gewinn mit der besten Auswahl, vgl. BestCombination
     public int HighestProfit { get; private set; }
+    // Falls der Algorithmus durch CancellationToken unterbrochen wird 
+    // anstatt selbst damit fertig ist, dann false
     public bool IsCompleted { get; private set; }
 
 
+    // ---DEBUGGING---
     public int DEBUG_changedCount = 0;
     public int DEBUG_pruningCount = 0;
-    private readonly Stopwatch sw = new Stopwatch();
-    private const int DEBUG_TIMEOUT = 6000;
+    // ---------------
 
     public CompleteSearch(List<int[]> demands)
     {
@@ -50,62 +70,48 @@ namespace Aufgabe1
       highestValPossible = CalcCurrentMaximumProfit();
     }
 
+    // Gib das Ergebnis als Dictionary zurueck in Form
+    // wie in LinearSolver, sodass sie identisch ausgegen koennen
     public Dictionary<string, rat> GetResult()
     {
-      if (null == BestCombination) throw new InvalidOperationException("Data is not processed yet. ");
-      return Enumerable.
+      if (null == BestCombination)
+        throw new InvalidOperationException("Data is not processed yet. ");
+      Dictionary<string, rat> result = Enumerable.
         Range(0, demands.Count).
         ToDictionary(
         idx => $"x{idx}",
         idx => BestCombination.Exists(item => item[3] == idx) ? 1 : (rat)0);
+      result.Add("P", HighestProfit);
+      return result;
     }
 
-    /// Obsolete
-    public void PrintResult()
-    {
-      if (BestCombination != null)
-      {
-        Console.WriteLine("Die beste Auswahl ist: ");
-        for (int i = 0; i < demands.Count; i++)
-        {
-          if (BestCombination.Exists(item => item[3] == i))
-          {
-            Console.WriteLine($"x{i}: 1");
-          }
-          else
-          {
-            Console.WriteLine($"x{i}: 0");
-          }
-        }
-        Console.WriteLine("-------------------");
-        Console.WriteLine("Zusammenfassung: ");
-        Console.WriteLine($"Diese Auswahl besteht aus {BestCombination.Count} Anbietern. ");
-        Console.WriteLine($"Die Mieteinnahme betraegt {HighestProfit} Euro. ");
-      }
-      else throw new InvalidOperationException("Data is not processed yet. ");
-    }
-
+    // Suche nach einer optimalen Loesung
     public void Process(CancellationToken cancelToken)
     {
-      sw.Start();
+      // Fuer kleine Data kann man direkt von 0 anfangen
+      // Somit ist es wahrscheinlich etwas schneller 
       if (demands.Count < 50)
       {
-        ProcessFromZero(cancelToken);
+        IsCompleted = true;
+        HighestProfit = 0;
+        RecRemove(0, FindFirstConflictCol(0), cancelToken);
         return;
       }
 
+      // Ansonsten faengt man vom Oben an
       BestCombination = null;
-
       for (int i = highestValPossible - 1; i > 0; i--)
       {
         HighestProfit = i;
         RecRemove(0, FindFirstConflictCol(0), cancelToken);
 
+        // Solange, bis eine optimale Loesung gefunden wird
         if (BestCombination != null)
         {
           IsCompleted = true;
           break;
         }
+        // Oder wenn IsCancellationRequested
         else if (cancelToken.IsCancellationRequested)
         {
           IsCompleted = false;
@@ -115,13 +121,9 @@ namespace Aufgabe1
       }
     }
 
-    public void ProcessFromZero(CancellationToken cancelToken)
-    {
-      IsCompleted = true;
-      HighestProfit = 0;
-      RecRemove(0, FindFirstConflictCol(0), cancelToken);
-    }
-
+    // Iterieren alle moegliche Kombination rekursiv
+    // Falls der jetzige hoechste Gewinn niedriger als 'lower bound' ist
+    // dann wird diesen Zweig abgeschnitten
     private void RecRemove(int startIndex, Tuple<int, List<int[]>> conflicts, CancellationToken cancelToken)
     {
       // Falls es am Anfang die Bedingungen bereits erfuellt
@@ -132,8 +134,11 @@ namespace Aufgabe1
         BestCombination = GetCurrentCombination();
         return;
       }
+      // Iteration
       for (int i = startIndex; i < conflicts.Item2.Count; i++)
       {
+        // Falls der Algorithmus durch CancellationToken unterbrochen wird
+        // dann direkt zurueck
         if (cancelToken.IsCancellationRequested)
         {
           Restore();
@@ -141,18 +146,15 @@ namespace Aufgabe1
           break;
         }
 
-        if (sw.ElapsedMilliseconds > DEBUG_TIMEOUT)
-        {
-          Restore();
-          break;
-        }
-
         if (HighestProfit == highestValPossible) return;
         int conflictIndex = demands.FindIndex(item => item[3] == conflicts.Item2[i][3]);
+        // Loescht zunaechst den Anbieter
         Delete(conflictIndex);
 
+        // Der jetizge hoechste Gewinn
         int max = CalcCurrentMaximumProfit();
-        // If smaller or equal the current highest, do pruning
+        // Fall kleiner oder gleich als den jetizgen globalen Wert
+        // Dann kann man diesen Zweig abschneiden
         if (max <= HighestProfit)
         {
           // Pop the last deleted obj and set it to avaliable
@@ -161,6 +163,9 @@ namespace Aufgabe1
           continue;
         }
 
+        // Ansonsten ist der moegliche Gewinn immer noch 
+        // hoeher als die globale Untergrenze, dann
+        // such danach, in welcher Spalte es noch Konflikte gibt
         int nextCol = -1;
         for (int c = conflicts.Item1; c < FlohmarktManagement.INTERVAL_LENGTH; c++)
         {
@@ -170,32 +175,38 @@ namespace Aufgabe1
             break;
           }
         }
-        // If compatible at this stage
+
+        // Falls es hier keinen Konflikt mehr gibt
         if (nextCol == -1)
         {
-          // Update highest profit
+          // Update den hoechsten Gewinn und die Kombination
           HighestProfit = max;
           BestCombination = GetCurrentCombination();
-
-          sw.Restart();
 
           // Pop the last deleted obj and set it to avaliable
           Restore();
           DEBUG_changedCount++;
           // return;
         }
+        // Falls der Konflikt dieser Spalte geloest ist
+        // Dann geht man zur naechsten Spalte
         else if (nextCol != conflicts.Item1)
         {
           RecRemove(0, FindFirstConflictCol(nextCol), cancelToken);
         }
+        // Ansonsten bleibt man in dieser Spalte
+        // und faengt mit dem naechsten Anbieter an
         else
         {
           RecRemove(i + 1, conflicts, cancelToken);
         }
       }
+      // Ist dieser Unterzweig vollstaendig gesucht
+      // geht man zurueck zum oberen Zweig
       Restore();
     }
 
+    // diese Anbieter 'logisch' loeschen
     private void Delete(int index)
     {
       currentDeleted.Push(index);
@@ -207,6 +218,8 @@ namespace Aufgabe1
       }
     }
 
+    // Die Anbieter, die zuletzt durch Delete() geloescht wurde,
+    // wiederherstellen
     private void Restore()
     {
       if (currentDeleted.Count == 0) return;
@@ -219,14 +232,18 @@ namespace Aufgabe1
       }
     }
 
-    // Col starts with index 0; Search starts with col 0
+    // Col startet mit Index 0; Search startet eben mit col 0
+    // RETURN: Tuple<int, List<int[]>>: (SpalteZahl, Anfragen dieser Spalte)
     private Tuple<int, List<int[]>> FindFirstConflictCol(int startCol = 0)
     {
       List<int[]> currentCol;
-      // Traverse the cols
+      // iteriert ueber Spalten
       for (int c = startCol; c < FlohmarktManagement.INTERVAL_LENGTH; c++)
       {
+        // Falls die Summe der Laenge aller Anfragen kleiner 
+        // als HEIGHT, i.e. 1000, dann passt diese Spalte
         if (currentMap[c] <= FlohmarktManagement.HEIGHT) continue;
+        // Ansonsten gib alle Anfragen dieser Spalte zurueck
         currentCol = Enumerable.Range(0, demands.Count)
           .Where(idx => avaliable[idx]
           && demands[idx][0] <= c + FlohmarktManagement.START_TIME
@@ -235,9 +252,14 @@ namespace Aufgabe1
           .ToList();
         return new Tuple<int, List<int[]>>(c, currentCol);
       }
+      // Falls es in allen Spalten passt
+      // dann gib -1 als Spalte zurueck
       return new Tuple<int, List<int[]>>(-1, null);
     }
 
+    // Der jetzige hoechstmoegliche Gewinn
+    // Falls in manchen Spalten ueber 1000 sind, dann 
+    // zaehlen die als 1000
     private int CalcCurrentMaximumProfit()
     {
       int count = 0;
@@ -248,6 +270,8 @@ namespace Aufgabe1
       return count;
     }
 
+    // Gib alle Anbieter, die nicht durch Delete()
+    // 'geloescht' sind, zurueck
     private List<int[]> GetCurrentCombination()
     {
       return Enumerable.
