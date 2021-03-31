@@ -14,44 +14,12 @@ namespace Aufgabe1
 {
   public class FlohmarktManagement
   {
-    public const int HEIGHT = 6;
+    public const int HEIGHT = 1000;
     public const int START_TIME = 8;
-    public const int END_TIME = 12;
+    public const int END_TIME = 18;
     public const int INTERVAL_LENGTH = END_TIME - START_TIME;
     public static void Main(string[] args)
     {
-      // List<int[]> data = new List<int[]> {
-      //   new int[] {8,9,1,0}, 
-      //   new int[] {8,9,3,1}, 
-      //   new int[] {8,9,2,2}, 
-      //   new int[] {9,10,2,3}, 
-      //   new int[] {9,10,3,4}, 
-      //   new int[] {10,11,2,5}, 
-      //   new int[] {10,11,3,6}, 
-      //   new int[] {10,12,1,7}, 
-      //   new int[] {11,12,1,8}, 
-      //   new int[] {11,12,1,9}, 
-      //   new int[] {11,12,1,10}, 
-      //   new int[] {11,12,2,11}, 
-      // };
-
-      for (int i = 0; i < 50; i++)
-      {
-        var data = new Debug.RandomBlockGenerator(8, 12, 3, 20).GetResult();
-        Dictionary<string, rat> r = LinearSolver.GoogleSolve(data);
-        PrintResult(r);
-        Painter.Paint("", r, data);
-      }
-
-
-
-
-
-
-
-
-
-
       var arg = ParseArgs(args);
       Stopwatch sw = new Stopwatch();
       Tuple<bool, int, List<int[]>> input = ReadInput();
