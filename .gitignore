@@ -343,3 +343,7 @@ TSWLatexianTemp*
 !*/Einsendung/*/*/*.txt
 
 !**/assets/*
+
+# Don't upload any secret key
+API_KEY
+__pycache__

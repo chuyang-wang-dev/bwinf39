@@ -9,9 +9,9 @@ namespace Aufgabe1
 {
   // Vollstaendige Suche mit Backtracking
   // Hier wird das Problem als ein groesses Rechteck
-  // mit eine Hoehe von 10 und eine Breite von 1000
+  // mit einer Hoehe von 10 und einer Breite von 1000
   // in den man viele kleine Rechtecke einsetzt, 
-  // abstrahiert. Vgl. Dokumentation
+  // abstrahiert. 
   public class CompleteSearch
   {
     // Speichert die Data aller Anbieter

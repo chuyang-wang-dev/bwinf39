@@ -110,66 +110,6 @@ namespace Aufgabe1
       Console.ReadKey();
     }
 
-    private static CommandLineOptions ParseArgs(string[] args)
-    {
-      static void Fail(string[] kAv)
-      {
-        Console.WriteLine($"Gegebener Wert fuer das Kommandozeilen-Argument '{kAv[0]}' ist nicht gueltig. Vergleich Dokumentation. ");
-      }
-
-      int timeLimit = int.MaxValue;
-      bool g = false;
-      bool simplex = false;
-      foreach (var arg in args)
-      {
-        string[] keyAndValue = arg.Trim().Split('=');
-        switch (keyAndValue[0])
-        {
-          case "--time-limit":
-            if (!int.TryParse(keyAndValue[1], out timeLimit))
-              Fail(keyAndValue);
-            break;
-          case "--use-google":
-            if (!bool.TryParse(keyAndValue[1], out g))
-              Fail(keyAndValue);
-            break;
-          case "--force-simplex":
-            if (!bool.TryParse(keyAndValue[1], out simplex))
-              Fail(keyAndValue);
-            break;
-          default:
-            Fail(keyAndValue);
-            break;
-        }
-      }
-      return new CommandLineOptions(timeLimit, g, simplex);
-    }
-
-    private readonly struct CommandLineOptions
-    {
-      public CommandLineOptions(int timeLimit = Int32.MaxValue,
-                                bool useGoogle = false,
-                                bool forceSimplex = false)
-      {
-        TimeLimit = timeLimit;
-        UseGoogle = useGoogle;
-        ForceSimplex = forceSimplex;
-      }
-
-      public readonly int TimeLimit { get; }
-      public readonly bool UseGoogle { get; }
-      public readonly bool ForceSimplex { get; }
-
-      public override string ToString()
-      {
-        return $@"
-        --time-limit={TimeLimit} 
-        --use-google={UseGoogle} 
-        --force-simplex={ForceSimplex}";
-      }
-    }
-
-
     // Liest die Test-Datei
     // IsSuccess, demandCount, data
     private static Tuple<bool, int, List<int[]>> ReadInput()
@@ -279,6 +219,67 @@ namespace Aufgabe1
         Where(idx => data[idx][0] <= c + START_TIME && data[idx][1] > c + START_TIME).
         ToArray();
     }
+
+    
+    private static CommandLineOptions ParseArgs(string[] args)
+    {
+      static void Fail(string[] kAv)
+      {
+        Console.WriteLine($"Gegebener Wert fuer das Kommandozeilen-Argument '{kAv[0]}' ist nicht gueltig. Vergleich Dokumentation. ");
+      }
+
+      int timeLimit = int.MaxValue;
+      bool g = false;
+      bool simplex = false;
+      foreach (var arg in args)
+      {
+        string[] keyAndValue = arg.Trim().Split('=');
+        switch (keyAndValue[0])
+        {
+          case "--time-limit":
+            if (!int.TryParse(keyAndValue[1], out timeLimit))
+              Fail(keyAndValue);
+            break;
+          case "--use-google":
+            if (!bool.TryParse(keyAndValue[1], out g))
+              Fail(keyAndValue);
+            break;
+          case "--force-simplex":
+            if (!bool.TryParse(keyAndValue[1], out simplex))
+              Fail(keyAndValue);
+            break;
+          default:
+            Fail(keyAndValue);
+            break;
+        }
+      }
+      return new CommandLineOptions(timeLimit, g, simplex);
+    }
+
+    private readonly struct CommandLineOptions
+    {
+      public CommandLineOptions(int timeLimit = Int32.MaxValue,
+                                bool useGoogle = false,
+                                bool forceSimplex = false)
+      {
+        TimeLimit = timeLimit;
+        UseGoogle = useGoogle;
+        ForceSimplex = forceSimplex;
+      }
+
+      public readonly int TimeLimit { get; }
+      public readonly bool UseGoogle { get; }
+      public readonly bool ForceSimplex { get; }
+
+      public override string ToString()
+      {
+        return $@"
+        --time-limit={TimeLimit} 
+        --use-google={UseGoogle} 
+        --force-simplex={ForceSimplex}";
+      }
+    }
+
   }
 
   public static class IExtensions

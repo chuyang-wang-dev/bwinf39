@@ -19,7 +19,7 @@ namespace Aufgabe1.LinearProgramming
     private readonly LinearConstraint[] originConstraints;
     // Die Zielfunktion
     private readonly Objective objective;
-    private readonly Heap<ConstraintWithMax> toSearch;
+    private readonly Heap<Node> toSearch;
     // Das jetzige beste Ergebnis
     // Ist ein UpperBound kleiner als diesen Wert
     // wird es nicht mehr in zwei Zweigen geteilt
@@ -36,14 +36,14 @@ namespace Aufgabe1.LinearProgramming
     {
       originConstraints = LCs;
       this.objective = objective;
-      toSearch = new Heap<ConstraintWithMax>(50);
+      toSearch = new Heap<Node>(50);
       globalLowerBound = 0;
     }
 
     // Loest die LP durch Branch-And-Cut
     public void Solve(CancellationToken cancelToken)
     {
-      var c = new ConstraintWithMax(originConstraints, objective, cancelToken);
+      var c = new Node(originConstraints, objective, cancelToken);
       // Teilt das jetzige Ergebnis in zwei Zweigen
       // sofern die Werte nicht alle ganzzaehlig sind
       SolveOne(c, cancelToken);
@@ -67,7 +67,7 @@ namespace Aufgabe1.LinearProgramming
 
     // Unterteilt das jetzige Ergebnic c in Unterzweigen
     // Fuer die Variablen, die nicht ganzzahlig sind
-    private void SolveOne(ConstraintWithMax c, CancellationToken cancelToken)
+    private void SolveOne(Node c, CancellationToken cancelToken)
     {
       if (cancelToken.IsCancellationRequested)
       {
@@ -121,9 +121,9 @@ namespace Aufgabe1.LinearProgramming
           if (!(pair.Value.FractionPart == 0))
           {
             LinearConstraint zero = new LinearConstraint(new string[] { pair.Key }, new rat[] { 1 }, 0, LinearConstraint.InequalityType.SmallerOrEqualTo);
-            toSearch.Add(new ConstraintWithMax(c.Tableau, zero, objective, cancelToken));
+            toSearch.Add(new Node(c.Tableau, zero, objective, cancelToken));
             LinearConstraint one = new LinearConstraint(new string[] { pair.Key }, new rat[] { -1 }, -1, LinearConstraint.InequalityType.SmallerOrEqualTo);
-            toSearch.Add(new ConstraintWithMax(c.Tableau, one, objective, cancelToken));
+            toSearch.Add(new Node(c.Tableau, one, objective, cancelToken));
           }
         }
       }
@@ -198,7 +198,7 @@ namespace Aufgabe1.LinearProgramming
     }
 
     // Klasse zum Speichern von geloeste Simplex Tableau
-    private class ConstraintWithMax : IComparable<ConstraintWithMax>
+    public class Node : IComparable<Node>
     {
       public rat Upperbound { get; }
       public rat Lowerbound { get; }
@@ -208,7 +208,7 @@ namespace Aufgabe1.LinearProgramming
       // Das jetizge Tableau
       public Simplex Tableau { get; }
 
-      public ConstraintWithMax(LinearConstraint[] LCs, Objective obj, CancellationToken cancelToken)
+      public Node(LinearConstraint[] LCs, Objective obj, CancellationToken cancelToken)
       {
         Simplex s = new Simplex(LCs, obj);
         // Loest die LP-Relaxition mit Simplex
@@ -237,7 +237,7 @@ namespace Aufgabe1.LinearProgramming
       }
 
       // Neuloesen mit einer weiterer Beschraenkung
-      public ConstraintWithMax(Simplex old, LinearConstraint lc, Objective obj, CancellationToken cancelToken)
+      public Node(Simplex old, LinearConstraint lc, Objective obj, CancellationToken cancelToken)
       {
         Simplex s = new Simplex(old);
         // Addiert das neu ergaenzte Ungleichung
@@ -280,7 +280,7 @@ namespace Aufgabe1.LinearProgramming
       // Das Objekt ist 'groesser', 
       // wenn sein Upperbound groesser ist
       // ist es gleich, dann vergleicht man den Lowerbound
-      public int CompareTo(ConstraintWithMax that)
+      public int CompareTo(Node that)
       {
         if (Upperbound > that.Upperbound) return 1;
         else if (Upperbound.Equal(that.Upperbound))
