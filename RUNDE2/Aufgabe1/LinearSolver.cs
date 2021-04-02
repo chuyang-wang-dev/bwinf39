@@ -94,7 +94,7 @@ namespace Aufgabe1.LinearProgramming
           }
         }
 
-        // fall eine ganzzahlige Loesung (alle Variablen ganzzahlig) gefunden
+        // Falls eine ganzzahlige Loesung (alle Variablen ganzzahlig) gefunden
         // dann kann man die ganze Suchreihe loeschen
         // denn dort wird die Ergebnis nach Upperbound sortiert
         // d.h. dieses Ergebnis 'c' hat den hoechstwahrscheinlichen Wert
@@ -313,9 +313,9 @@ namespace Aufgabe1.LinearProgramming
 
 
     public List<List<rat>> Left { get; }
+    public List<rat> Right { get; }
     public List<string> ColumnVariableNames { get; }
     public Dictionary<string, int> NamesToEntries { get; }
-    public List<rat> Right { get; }
     public List<string> RowBasicVariableNames { get; }
     // Speichert, wie viele Entscheidungsvariablen es gibt
     // Also die Anzahl von Variablen, die nicht Slack sind
@@ -362,6 +362,7 @@ namespace Aufgabe1.LinearProgramming
       Right = new List<rat>(new rat[rowCount]);
       RowBasicVariableNames = new List<string>(new string[rowCount]);
 
+      // Zielfunktion
       Left.Add(new List<rat>(new rat[colCount]));
       for (int i = 0; i < objective.Count; i++)
       {
@@ -680,7 +681,7 @@ namespace Aufgabe1.LinearProgramming
       }
     }
 
-    // Zeilenoperation: R_row = R_row / respectToCol
+    // Zeilenoperation: R_row = R_row / c_row,respectToCol
     private void ReduceRow(int row, int respectToCol)
     {
       rat divisor = Left[row][respectToCol].CanonicalForm;

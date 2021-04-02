@@ -6,7 +6,6 @@ using System.Threading;
 using System.Diagnostics;
 
 using Aufgabe1.LinearProgramming;
-
 using rat = Rationals.Rational;
 
 namespace Aufgabe1
@@ -164,9 +163,7 @@ namespace Aufgabe1
       linearSolver.Solve(cancelToken);
       // Falls Simplex fertig ist
       if (linearSolver.IsCompleted)
-      {
         return new Tuple<bool, Dictionary<string, rat>>(true, linearSolver.BestSolution);
-      }
       // Ansonsten, falls es eine relativ gute Loesung gibt, gibt diese zurueck
       // Oder 0
       else
@@ -188,28 +185,28 @@ namespace Aufgabe1
     private static Tuple<LinearConstraint[], Objective> GetConstraints(List<int[]> data)
     {
       List<LinearConstraint> constraints = new List<LinearConstraint>();
+      // 10 Zeitspannen, Laenge sollte kleiner oder gleich als 1000
       for (int i = 0; i < INTERVAL_LENGTH; i++)
       {
         var c = new LinearConstraint(HEIGHT, LinearConstraint.InequalityType.SmallerOrEqualTo);
         var colItems = GetItemsInCol(i, data);
         foreach (var item in colItems)
-        {
           c.SetCoefficient($"x{item}", data[item][2]);
-        }
         constraints.Add(c);
       }
+      // Obergrenze von Entscheidungsvariablen 0 <= x <= 1
       for (int i = 0; i < data.Count; i++)
       {
         constraints.Add(new LinearConstraint(new string[] { $"x{i}" }, new rat[] { 1 }, 1, LinearConstraint.InequalityType.SmallerOrEqualTo));
       }
 
-
+      // Zielfunktion
       var objective = new Objective(Enumerable.Range(0, data.Count)
-                                                                .Select(i => $"x{i}")
-                                                                .ToArray(),
-                                                      Enumerable.Range(0, data.Count)
-                                                      .Select(i => (rat)data[i].GetSize())
-                                                      .ToArray());
+                                                              .Select(i => $"x{i}")
+                                                              .ToArray(),
+                                    Enumerable.Range(0, data.Count)
+                                                              .Select(i => (rat)data[i].GetSize())
+                                                              .ToArray());
       return new Tuple<LinearConstraint[], Objective>(constraints.ToArray(), objective);
     }
 
