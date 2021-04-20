@@ -1,5 +1,0 @@
-Laden Sie bitte die Bibliothek von 
-[hier](https://github.com/google/or-tools/releases/download/v8.2/or-tools_VisualStudio2019-64bit_v8.2.8710.zip) 
-herunter und kopieren Sie den ganzen `package` Ordner aus der heruntergeladenen Datei hier. 
-
-Die andere Bibliotheken sollen automatisch durch `dotnet restore` heruntergeladenen werden können. 
