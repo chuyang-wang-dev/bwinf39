@@ -1,3 +1,5 @@
+**Archieved**: 01.09.2021
+
 # Bwinf2020
 
 Meine eigene Implementierung für die Aufgabe der Runde 1 und 2 des [Bwinf2020](https://bwinf.de/bundeswettbewerb/). 
