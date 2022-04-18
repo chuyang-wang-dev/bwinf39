@@ -1,4 +1,4 @@
-**Archieved**: 01.09.2021
+**Archived**: 01.09.2021
 
 # Bwinf2020
 
